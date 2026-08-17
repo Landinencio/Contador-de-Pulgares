@@ -152,12 +152,12 @@ private fun ResumenPersonal(deboTotal: Long, meDebenTotal: Long) {
         enPaz -> Frases.para(Momento.EN_PAZ, semilla = 2)
         deboTotal > meDebenTotal -> Frases.para(
             Momento.CABECERA_DEBO,
-            cuanto = Dinero.formatea(deboTotal),
+            centimos = deboTotal,
             semilla = deboTotal
         )
         else -> Frases.para(
             Momento.CABECERA_ME_DEBEN,
-            cuanto = Dinero.formatea(meDebenTotal),
+            centimos = meDebenTotal,
             semilla = meDebenTotal
         )
     }
@@ -179,6 +179,13 @@ private fun ResumenPersonal(deboTotal: Long, meDebenTotal: Long) {
                         Chapa(texto = "Te deben ${Dinero.formatea(meDebenTotal)}", color = Paleta.VerdePaz, colorTexto = Paleta.Papel)
                     }
                 }
+                Spacer(Modifier.height(8.dp))
+                // El guiño de las pesetas: el grupo sigue pensando en ellas.
+                Text(
+                    text = pesetasDeLasDeAntes(deboTotal, meDebenTotal),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Paleta.TintaSuave
+                )
             }
         }
     }
@@ -234,6 +241,14 @@ private fun FilaGrupo(resumen: ResumenGrupo, onClick: () -> Unit) {
     }
 }
 
+/** "O sea, 3.893 pesetas de las de antes." Para el grupo de siempre. */
+private fun pesetasDeLasDeAntes(debo: Long, meDeben: Long): String = when {
+    debo > 0 && meDeben > 0 ->
+        "O sea: debes ${Dinero.formateaPesetas(debo)} y te deben ${Dinero.formateaPesetas(meDeben)}, de las de antes"
+    debo > 0 -> "O sea, ${Dinero.formateaPesetas(debo)} de las de antes"
+    else -> "O sea, ${Dinero.formateaPesetas(meDeben)} de las de antes"
+}
+
 private fun detalleGrupo(resumen: ResumenGrupo): String {
     val gente = resumen.grupo.colegas.size
     val gastos = when (resumen.cuantosGastos) {
@@ -241,5 +256,10 @@ private fun detalleGrupo(resumen: ResumenGrupo): String {
         1 -> "1 gasto"
         else -> "${resumen.cuantosGastos} gastos"
     }
-    return "$gente colegas · $gastos · ${Dinero.formateaCorto(resumen.totalGastado)}"
+    val total = if (resumen.totalGastado > 0) {
+        " · ${Dinero.formateaCorto(resumen.totalGastado)} (${Dinero.formateaPesetas(resumen.totalGastado)})"
+    } else {
+        ""
+    }
+    return "$gente colegas · $gastos$total"
 }

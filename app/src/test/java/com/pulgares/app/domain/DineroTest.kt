@@ -44,6 +44,37 @@ class DineroTest {
     }
 
     @Test
+    fun `convierte a pesetas con el cambio oficial`() {
+        // 1 € = 166,386 pts, el cambio fijo de 1998.
+        assertEquals(166L, Dinero.aPesetas(100))
+        assertEquals(1664L, Dinero.aPesetas(1000))
+        assertEquals(3893L, Dinero.aPesetas(2340))
+        assertEquals(0L, Dinero.aPesetas(0))
+        // Mil euros son las famosas 166.386 pesetas.
+        assertEquals(166_386L, Dinero.aPesetas(100_000))
+    }
+
+    @Test
+    fun `las pesetas de un importe negativo salen negativas`() {
+        assertEquals(-3893L, Dinero.aPesetas(-2340))
+        assertEquals("-3.893 pts", Dinero.formateaPesetas(-2340))
+    }
+
+    @Test
+    fun `formatea pesetas con separador de miles`() {
+        assertEquals("3.893 pts", Dinero.formateaPesetas(2340))
+        assertEquals("166 pts", Dinero.formateaPesetas(100))
+        assertEquals("166.386 pts", Dinero.formateaPesetas(100_000))
+        assertEquals("23,40 € · 3.893 pts", Dinero.formateaConPesetas(2340))
+    }
+
+    @Test
+    fun `las pesetas aguantan importes de piso compartido sin desbordar`() {
+        // 50.000 € de alquileres acumulados: sigue cuadrando.
+        assertEquals(8_319_300L, Dinero.aPesetas(5_000_000))
+    }
+
+    @Test
     fun `el reparto a escote no pierde ni inventa centimos`() {
         // 10 € entre 3 = 3,33 + 3,33 + 3,34
         val partes = Dinero.reparte(1000, 3)

@@ -168,6 +168,15 @@ fun NuevoGastoScreen(
                         isError = importeTexto.isNotBlank() && Dinero.parse(importeTexto) == null,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    // Las pesetas, en vivo mientras se escribe el importe.
+                    if (importeCentimos > 0) {
+                        Text(
+                            text = "Que son ${Dinero.formateaPesetas(importeCentimos)} de las de antes",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 4.dp, top = 6.dp)
+                        )
+                    }
                 }
             }
         }

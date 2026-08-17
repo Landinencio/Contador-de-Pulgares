@@ -9,6 +9,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.pulgares.app.domain.model.Dinero
 import com.pulgares.app.ui.theme.Paleta
 
 /**
@@ -168,6 +170,38 @@ fun Chapa(
             text = texto,
             style = MaterialTheme.typography.labelMedium,
             color = colorTexto
+        )
+    }
+}
+
+/**
+ * Un importe con su equivalencia en pesetas debajo, en pequeñito. Es el chiste
+ * de la casa: el grupo sigue pensando en pesetas, así que la app las pone
+ * siempre al lado del euro.
+ */
+@Composable
+fun Importe(
+    centimos: Long,
+    modifier: Modifier = Modifier,
+    estilo: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.titleLarge,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    alineadoDerecha: Boolean = false,
+    conSigno: Boolean = false
+) {
+    val euros = if (conSigno && centimos > 0) {
+        "+${Dinero.formatea(centimos)}"
+    } else {
+        Dinero.formatea(centimos)
+    }
+    Column(
+        modifier = modifier,
+        horizontalAlignment = if (alineadoDerecha) Alignment.End else Alignment.Start
+    ) {
+        Text(text = euros, style = estilo, color = color)
+        Text(
+            text = Dinero.formateaPesetas(centimos),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

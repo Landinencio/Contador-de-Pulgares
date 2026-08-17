@@ -47,6 +47,33 @@ object Dinero {
         return "$signo$euros,${resto.toString().padStart(2, '0')}$simbolo"
     }
 
+    /**
+     * El cambio fijo e irrevocable de 1998: 1 € = 166,386 pesetas. No se toca,
+     * es el oficial y con el que discutia media España.
+     */
+    const val PESETAS_POR_EURO = 166.386
+
+    /**
+     * Centimos de euro a pesetas enteras, redondeando al alza desde la mitad.
+     * Se hace con enteros (166386 milesimas) para no arrastrar decimales.
+     */
+    fun aPesetas(centimos: Long): Long {
+        val signo = if (centimos < 0) -1L else 1L
+        val valorAbsoluto = abs(centimos)
+        return signo * ((valorAbsoluto * 166_386L + 50_000L) / 100_000L)
+    }
+
+    /** 2340 -> "3.893 pts". El guiño para el grupo de siempre. */
+    fun formateaPesetas(centimos: Long): String {
+        val pesetas = aPesetas(centimos)
+        val signo = if (pesetas < 0) "-" else ""
+        return "$signo${agrupaMiles(abs(pesetas))} pts"
+    }
+
+    /** "23,40 € · 3.893 pts", para cuando caben las dos en una linea. */
+    fun formateaConPesetas(centimos: Long): String =
+        "${formatea(centimos)} · ${formateaPesetas(centimos)}"
+
     /** Version corta para cabeceras: 1250 -> "12,50", 150000 -> "1.500". */
     fun formateaCorto(centimos: Long): String {
         val abs = abs(centimos)

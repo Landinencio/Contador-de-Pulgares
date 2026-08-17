@@ -1,5 +1,6 @@
 package com.pulgares.app.frases
 
+import com.pulgares.app.domain.model.Dinero
 import kotlin.random.Random
 
 /**
@@ -7,10 +8,11 @@ import kotlin.random.Random
  * cuando te deben y cuando alguien lleva tres meses haciendose el sueco.
  *
  * Convenciones de las plantillas:
- *   {quien}  -> nombre del colega
- *   {cuanto} -> importe ya formateado ("12,50 €")
- *   {que}    -> concepto del gasto
- *   {dias}   -> dias que lleva la deuda sin saldar
+ *   {quien}   -> nombre del colega
+ *   {cuanto}  -> importe ya formateado ("12,50 €")
+ *   {pesetas} -> el mismo importe en pesetas ("2.080 pts")
+ *   {que}     -> concepto del gasto
+ *   {dias}    -> dias que lleva la deuda sin saldar
  * Ninguna frase usa un hueco que no le pasen: ver FrasesTest.
  */
 enum class Momento {
@@ -73,7 +75,10 @@ object Frases {
         "Ojo por ojo, euro por euro: {cuanto}.",
         "No es por presionar, pero {cuanto}. Sí es por presionar.",
         "Tic, tac. {cuanto}, {quien}.",
-        "Tus {cuanto} y mi paciencia se están agotando a la vez."
+        "Tus {cuanto} y mi paciencia se están agotando a la vez.",
+        "{cuanto}. O {pesetas}, si lo prefieres en dinero de verdad.",
+        "En tus tiempos eso eran {pesetas}, y también las debías.",
+        "{quien}, son {pesetas}. Ya te lo pongo en pesetas para que te duela más."
     )
 
     private val pagaste = listOf(
@@ -302,7 +307,9 @@ object Frases {
         cuanto: String = "",
         que: String = "",
         dias: Int = 0,
-        semilla: Long = 0L
+        semilla: Long = 0L,
+        /** Si se pasa, de aqui salen tanto {cuanto} como {pesetas}. */
+        centimos: Long? = null
     ): String {
         val lista = catalogo(momento)
         val indice = if (semilla == 0L) {
@@ -310,15 +317,24 @@ object Frases {
         } else {
             ((semilla % lista.size) + lista.size).toInt() % lista.size
         }
-        return rellena(lista[indice], quien, cuanto, que, dias)
+        val euros = cuanto.ifBlank { centimos?.let { Dinero.formatea(it) } ?: "" }
+        val pesetas = centimos?.let { Dinero.formateaPesetas(it) } ?: "unas cuantas pesetas"
+        return rellena(lista[indice], quien, euros, pesetas, que, dias)
     }
 
-    private fun rellena(plantilla: String, quien: String, cuanto: String, que: String, dias: Int) =
-        plantilla
-            .replace("{quien}", quien.ifBlank { "Alguien" })
-            .replace("{cuanto}", cuanto.ifBlank { "algo" })
-            .replace("{que}", que.ifBlank { "eso" })
-            .replace("{dias}", dias.toString())
+    private fun rellena(
+        plantilla: String,
+        quien: String,
+        cuanto: String,
+        pesetas: String,
+        que: String,
+        dias: Int
+    ) = plantilla
+        .replace("{quien}", quien.ifBlank { "Alguien" })
+        .replace("{cuanto}", cuanto.ifBlank { "algo" })
+        .replace("{pesetas}", pesetas)
+        .replace("{que}", que.ifBlank { "eso" })
+        .replace("{dias}", dias.toString())
 
     /**
      * Rango del moroso segun lo que debe y lo que tarda. Es puro cachondeo, pero

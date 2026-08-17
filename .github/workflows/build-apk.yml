@@ -50,6 +50,19 @@ jobs:
 
           gh release delete "$TAG" --yes || true
           git push origin ":refs/tags/$TAG" || true
-          gh release create "$TAG" "$APK" \
-            --title "Contador de Pulgares (build $GITHUB_RUN_NUMBER)" \
-            --notes "APK de prueba. Instalar y a cobrar."
+
+          # La API de releases devuelve 503 de vez en cuando (pasó en el primer
+          # push): se reintenta antes de dar el paso por fallido.
+          for intento in 1 2 3; do
+            if gh release create "$TAG" "$APK" \
+                 --title "Contador de Pulgares (build $GITHUB_RUN_NUMBER)" \
+                 --notes "APK de prueba. Instalar y a cobrar."; then
+              echo "Release publicada en el intento $intento"
+              exit 0
+            fi
+            echo "Intento $intento fallido; se reintenta en 15 s"
+            gh release delete "$TAG" --yes || true
+            sleep 15
+          done
+          echo "No se pudo publicar la release; el APK está como artifact"
+          exit 1

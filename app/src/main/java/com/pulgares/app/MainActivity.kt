@@ -130,7 +130,7 @@ fun AppPulgares(repo: Repositorio) {
                                         Frases.para(
                                             Momento.PAGASTE,
                                             quien = estado.grupo.nombreDe(transferencia.deQuienId),
-                                            cuanto = Dinero.formatea(transferencia.importeCentimos)
+                                            centimos = transferencia.importeCentimos
                                         )
                                     } else {
                                         Frases.para(
@@ -149,7 +149,7 @@ fun AppPulgares(repo: Repositorio) {
                                     Frases.para(
                                         Momento.DEBES,
                                         quien = colega.nombre,
-                                        cuanto = Dinero.formatea(deuda)
+                                        centimos = deuda
                                     )
                                 )
                             },
@@ -188,7 +188,7 @@ fun AppPulgares(repo: Repositorio) {
                                     Frases.para(
                                         Momento.GASTO_NUEVO,
                                         quien = estado.grupo.nombreDe(pagadorId),
-                                        cuanto = Dinero.formatea(importe),
+                                        centimos = importe,
                                         que = concepto
                                     )
                                 )

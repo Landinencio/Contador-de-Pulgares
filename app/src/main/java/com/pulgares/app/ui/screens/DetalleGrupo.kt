@@ -34,6 +34,7 @@ import com.pulgares.app.frases.Momento
 import com.pulgares.app.ui.components.BotonPegatina
 import com.pulgares.app.ui.components.BotonRedondo
 import com.pulgares.app.ui.components.Chapa
+import com.pulgares.app.ui.components.Importe
 import com.pulgares.app.ui.components.Pegatina
 import com.pulgares.app.ui.theme.Paleta
 import java.time.Instant
@@ -78,7 +79,7 @@ fun DetalleGrupoScreen(
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
-                        text = "${grupo.colegas.size} colegas · ${Dinero.formateaCorto(estado.totalGastado)} en total",
+                        text = "${grupo.colegas.size} colegas · ${Dinero.formateaConPesetas(estado.totalGastado)}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -103,13 +104,13 @@ fun DetalleGrupoScreen(
                 estado.enPaz -> Frases.para(Momento.EN_PAZ, semilla = grupo.id.hashCode().toLong())
                 mio.neto < 0 -> Frases.para(
                     Momento.CABECERA_DEBO,
-                    cuanto = Dinero.formatea(mio.deboCentimos),
+                    centimos = mio.deboCentimos,
                     semilla = mio.deboCentimos
                 )
                 mio.neto > 0 -> Frases.para(
                     Momento.TE_DEBEN,
                     quien = yo?.nombre ?: "",
-                    cuanto = Dinero.formatea(mio.meDebenCentimos),
+                    centimos = mio.meDebenCentimos,
                     semilla = mio.meDebenCentimos
                 )
                 else -> Frases.para(Momento.EN_PAZ, semilla = 5)
@@ -191,7 +192,7 @@ fun DetalleGrupoScreen(
                                 text = Frases.para(
                                     Momento.MOROSO_LEYENDA,
                                     quien = colega.nombre,
-                                    cuanto = Dinero.formatea(deuda),
+                                    centimos = deuda,
                                     dias = dias,
                                     semilla = colega.id.hashCode().toLong()
                                 ),
@@ -325,11 +326,7 @@ private fun FilaTransferencia(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = Dinero.formatea(transferencia.importeCentimos),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Importe(centimos = transferencia.importeCentimos)
             }
             BotonRedondo(
                 contenido = if (soyElQuePaga) "Pagar" else "Cobrado",
@@ -372,11 +369,7 @@ private fun FilaGasto(
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = Dinero.formatea(gasto.importeCentimos),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Importe(centimos = gasto.importeCentimos, alineadoDerecha = true)
                     if (loMio > 0) {
                         Text(
                             text = "tú ${Dinero.formatea(loMio)}",

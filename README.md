@@ -34,6 +34,10 @@ dinero.
   rango — de *Despistado* a *Moroso Patrimonio de la Humanidad*.
 - **Frases cachondas** en cada momento: al deber, al pagar, al cobrar, al apuntar
   un gasto y al quedar en paz.
+- **Todo en euros y en pesetas.** Cada importe lleva debajo su equivalencia con el
+  cambio oficial de 1998 (1 € = 166,386 pts), porque en el grupo se sigue pensando
+  en pesetas. Al escribir un gasto lo ves en vivo: «Que son 3.893 pts de las de
+  antes».
 - **Creador de monigotes** con más de **2,3 billones** de combinaciones.
 
 ### Las frases
@@ -126,7 +130,7 @@ Necesita JDK 17 y el SDK de Android (plataforma 35).
 JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleDebug
 ```
 
-Los tests (39, sobre dinero, reparto, settlement, frases y avatares):
+Los tests (43, sobre dinero, pesetas, reparto, settlement, frases y avatares):
 
 ```bash
 JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew testDebugUnitTest
