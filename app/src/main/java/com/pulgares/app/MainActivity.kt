@@ -2,6 +2,7 @@ package com.pulgares.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
@@ -13,10 +14,13 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -64,6 +68,61 @@ private sealed interface Pantalla {
     data class AjustesGrupo(val grupoId: String) : Pantalla
     data object MiAvatar : Pantalla
     data class AvatarDeColega(val grupoId: String, val colegaId: String) : Pantalla
+
+    /** El grupo al que pertenece la pantalla, si va de un grupo concreto. */
+    val grupoAsociado: String?
+        get() = when (this) {
+            is Grupo -> grupoId
+            is Gasto -> grupoId
+            is AjustesGrupo -> grupoId
+            is AvatarDeColega -> grupoId
+            else -> null
+        }
+
+    /** A donde lleva el boton atras del movil. */
+    fun atras(): Pantalla = when (this) {
+        Portada -> Portada
+        NuevoGrupo, MiAvatar -> Portada
+        is Grupo -> Portada
+        is Gasto -> Grupo(grupoId)
+        is AjustesGrupo -> Grupo(grupoId)
+        is AvatarDeColega -> AjustesGrupo(grupoId)
+    }
+
+    /**
+     * Se guarda como texto para que la pantalla abierta sobreviva a girar el
+     * movil y a que Android mate la app por falta de memoria.
+     */
+    fun serializa(): String = when (this) {
+        Portada -> "portada"
+        NuevoGrupo -> "nuevoGrupo"
+        MiAvatar -> "miAvatar"
+        is Grupo -> "grupo|$grupoId"
+        is Gasto -> "gasto|$grupoId|${gastoId.orEmpty()}"
+        is AjustesGrupo -> "ajustes|$grupoId"
+        is AvatarDeColega -> "avatarColega|$grupoId|$colegaId"
+    }
+
+    companion object {
+        fun desde(texto: String): Pantalla {
+            val trozos = texto.split("|")
+            return when (trozos.firstOrNull()) {
+                "nuevoGrupo" -> NuevoGrupo
+                "miAvatar" -> MiAvatar
+                "grupo" -> trozos.getOrNull(1)?.let { Grupo(it) } ?: Portada
+                "gasto" -> trozos.getOrNull(1)?.let {
+                    Gasto(it, trozos.getOrNull(2)?.ifBlank { null })
+                } ?: Portada
+                "ajustes" -> trozos.getOrNull(1)?.let { AjustesGrupo(it) } ?: Portada
+                "avatarColega" -> {
+                    val grupo = trozos.getOrNull(1)
+                    val colega = trozos.getOrNull(2)
+                    if (grupo != null && colega != null) AvatarDeColega(grupo, colega) else Portada
+                }
+                else -> Portada
+            }
+        }
+    }
 }
 
 @Composable
@@ -73,12 +132,31 @@ fun AppPulgares(repo: Repositorio) {
     val estadoGrupo by vm.estadoGrupo.collectAsStateWithLifecycle()
     val miAvatar by vm.miAvatar.collectAsStateWithLifecycle()
 
-    var pantalla by remember { mutableStateOf<Pantalla>(Pantalla.Portada) }
+    var pantalla by rememberSaveable(
+        stateSaver = Saver(
+            save = { it.serializa() },
+            restore = { Pantalla.desde(it) }
+        )
+    ) { mutableStateOf<Pantalla>(Pantalla.Portada) }
+
     val avisos = remember { SnackbarHostState() }
     val alcance = rememberCoroutineScope()
 
     fun avisa(texto: String) {
         alcance.launch { avisos.showSnackbar(texto) }
+    }
+
+    // El atrás del móvil recorre la jerarquía en vez de cerrar la app. En la
+    // portada se deja pasar, que ahí sí toca salir.
+    BackHandler(enabled = pantalla != Pantalla.Portada) {
+        pantalla = pantalla.atras()
+    }
+
+    // Si Android mató la app y se restaura en la pantalla de un grupo, el
+    // ViewModel viene vacío: hay que volver a pedir ese grupo o se queda
+    // cargando para siempre.
+    LaunchedEffect(pantalla.grupoAsociado) {
+        pantalla.grupoAsociado?.let { vm.abreGrupo(it) }
     }
 
     // Un grupo recién saldado merece confeti. Sin gastos no cuenta: estar a cero

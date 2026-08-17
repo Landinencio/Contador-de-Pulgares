@@ -51,8 +51,10 @@ jobs:
           gh release delete "$TAG" --yes || true
           git push origin ":refs/tags/$TAG" || true
 
-          # La API de releases devuelve 503 de vez en cuando (pasó en el primer
-          # push): se reintenta antes de dar el paso por fallido.
+          # La API de releases de GitHub devuelve 503 a rachas (pasó dos veces
+          # el primer día). Lo que importa del CI son los tests y el APK, que ya
+          # queda subido como artifact: si la release no sale, se avisa y el job
+          # sigue en verde en vez de dar un rojo que no es culpa del código.
           for intento in 1 2 3; do
             if gh release create "$TAG" "$APK" \
                  --title "Contador de Pulgares (build $GITHUB_RUN_NUMBER)" \
@@ -60,9 +62,12 @@ jobs:
               echo "Release publicada en el intento $intento"
               exit 0
             fi
-            echo "Intento $intento fallido; se reintenta en 15 s"
-            gh release delete "$TAG" --yes || true
-            sleep 15
+            # Puede que la release se creara y solo fallara el adjunto.
+            if gh release upload "$TAG" "$APK" --clobber; then
+              echo "APK adjuntado a la release existente"
+              exit 0
+            fi
+            echo "Intento $intento fallido; se reintenta en 20 s"
+            sleep 20
           done
-          echo "No se pudo publicar la release; el APK está como artifact"
-          exit 1
+          echo "::warning::La API de releases de GitHub no responde. El APK está en los artifacts de este run."
