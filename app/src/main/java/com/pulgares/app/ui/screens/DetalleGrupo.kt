@@ -28,6 +28,7 @@ import com.pulgares.app.data.EstadoGrupo
 import com.pulgares.app.domain.model.Colega
 import com.pulgares.app.domain.model.Dinero
 import com.pulgares.app.domain.model.Gasto
+import com.pulgares.app.domain.model.Pago
 import com.pulgares.app.domain.settlement.Transferencia
 import com.pulgares.app.frases.Frases
 import com.pulgares.app.frases.Momento
@@ -54,7 +55,8 @@ fun DetalleGrupoScreen(
     onVotar: (String, Boolean) -> Unit,
     onPagar: (Transferencia) -> Unit,
     onDarToque: (Colega, Long) -> Unit,
-    onBorrarGrupo: () -> Unit
+    onAbrirAjustes: () -> Unit,
+    onBorrarPago: (Pago) -> Unit
 ) {
     val grupo = estado.grupo
     val yo = grupo.yo
@@ -70,7 +72,7 @@ fun DetalleGrupoScreen(
         // ---- cabecera ----
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                BotonRedondo(contenido = "‹", onClick = onVolver)
+                BotonRedondo(contenido = "‹", onClick = onVolver, descripcion = "Volver a la portada")
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -85,9 +87,9 @@ fun DetalleGrupoScreen(
                     )
                 }
                 BotonRedondo(
-                    contenido = "🗑",
-                    onClick = onBorrarGrupo,
-                    color = Paleta.RojoDeudaSuave
+                    contenido = "⚙️",
+                    descripcion = "Ajustes del grupo",
+                    onClick = onAbrirAjustes
                 )
             }
         }
@@ -258,7 +260,7 @@ fun DetalleGrupoScreen(
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
-            items(estado.pagos) { pago ->
+            items(estado.pagos, key = { it.id }) { pago ->
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -274,6 +276,16 @@ fun DetalleGrupoScreen(
                         text = Dinero.formatea(pago.importeCentimos),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    // Un bizum apuntado por error deja las cuentas mal para
+                    // siempre, asi que hay que poder quitarlo.
+                    BotonRedondo(
+                        contenido = "✕",
+                        descripcion = "Deshacer este bizum",
+                        color = Paleta.RojoDeudaSuave,
+                        sombra = 2.dp,
+                        onClick = { onBorrarPago(pago) }
                     )
                 }
             }

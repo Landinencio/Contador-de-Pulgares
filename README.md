@@ -38,7 +38,9 @@ dinero.
   cambio oficial de 1998 (1 € = 166,386 pts), porque en el grupo se sigue pensando
   en pesetas. Al escribir un gasto lo ves en vivo: «Que son 3.893 pts de las de
   antes».
-- **Creador de monigotes** con más de **2,3 billones** de combinaciones.
+- **Creador de monigotes** con más de **2,3 billones** de combinaciones, para ti y
+  para cada colega del grupo.
+- **Confeti** cuando el grupo se queda a cero. Solo entonces.
 
 ### Las frases
 
@@ -130,7 +132,7 @@ Necesita JDK 17 y el SDK de Android (plataforma 35).
 JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleDebug
 ```
 
-Los tests (43, sobre dinero, pesetas, reparto, settlement, frases y avatares):
+Los tests (47, sobre dinero, pesetas, reparto, settlement, frases y avatares):
 
 ```bash
 JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew testDebugUnitTest
@@ -155,12 +157,13 @@ actualizarlos a mano para que sigan sirviendo.
 
 ## Lo que falta
 
-- [ ] **Compartir grupo entre móviles**. Ahora cada móvil lleva sus cuentas. El
-      plan es un endpoint en la cuenta AWS personal (Lambda + DynamoDB + API
-      Gateway, el mismo API Gateway que ya sirve a las otras apps de casa) con un
-      código de grupo corto para unirse. La app ya tiene los `BuildConfig`
-      (`SYNC_URL`, `SYNC_TOKEN`) preparados y se comporta bien sin ellos.
+- [ ] **Compartir grupo entre móviles**. Ahora cada móvil lleva sus cuentas y los
+      colegas son nombres, no cuentas de nadie. El diseño completo está en
+      [`docs/SINCRONIZACION.md`](docs/SINCRONIZACION.md): código de seis
+      caracteres, tabla DynamoDB con índice *sparse* y fusión por identificador
+      (que no necesita resolver conflictos, porque los gastos son inmutables y ya
+      llevan UUID). La app tiene los `BuildConfig` (`SYNC_URL`, `SYNC_TOKEN`)
+      preparados y se comporta bien sin ellos.
 - [ ] **Notificaciones de verdad** para el botón de "dar un toque": hoy el aviso
       se queda en el móvil del que lo manda.
-- [ ] Confeti al saldar un grupo (`nl.dionsegijn:konfetti-compose:2.0.5`).
 - [ ] Exportar a CSV y gastos recurrentes (el alquiler, Netflix…).

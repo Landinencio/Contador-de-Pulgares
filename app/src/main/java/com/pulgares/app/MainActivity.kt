@@ -29,8 +29,12 @@ import com.pulgares.app.domain.model.Gasto
 import com.pulgares.app.frases.Frases
 import com.pulgares.app.frases.Momento
 import com.pulgares.app.ui.PulgaresViewModel
+import com.pulgares.app.ui.components.LluviaDeConfeti
+import com.pulgares.app.ui.components.recuerdaCelebracion
 import com.pulgares.app.ui.screens.DetalleGrupoScreen
+import com.pulgares.app.ui.screens.EditarGrupoScreen
 import com.pulgares.app.ui.screens.EditorAvatarScreen
+import com.pulgares.app.ui.screens.avatarDe
 import com.pulgares.app.ui.screens.NuevoGastoScreen
 import com.pulgares.app.ui.screens.NuevoGrupoScreen
 import com.pulgares.app.ui.screens.PortadaScreen
@@ -51,13 +55,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** Las pantallas de la app. Son cuatro; no hace falta traerse una libreria. */
+/** Las pantallas de la app. Son pocas; no hace falta traerse una libreria. */
 private sealed interface Pantalla {
     data object Portada : Pantalla
     data object NuevoGrupo : Pantalla
     data class Grupo(val grupoId: String) : Pantalla
     data class Gasto(val grupoId: String, val gastoId: String?) : Pantalla
+    data class AjustesGrupo(val grupoId: String) : Pantalla
     data object MiAvatar : Pantalla
+    data class AvatarDeColega(val grupoId: String, val colegaId: String) : Pantalla
 }
 
 @Composable
@@ -74,6 +80,13 @@ fun AppPulgares(repo: Repositorio) {
     fun avisa(texto: String) {
         alcance.launch { avisos.showSnackbar(texto) }
     }
+
+    // Un grupo recién saldado merece confeti. Sin gastos no cuenta: estar a cero
+    // porque no has gastado nada no es ningún logro.
+    val grupoAbierto = estadoGrupo
+    val (celebrar, finCelebracion) = recuerdaCelebracion(
+        grupoAbierto != null && grupoAbierto.enPaz && grupoAbierto.gastos.isNotEmpty()
+    )
 
     Scaffold(
         snackbarHost = { SnackbarHost(avisos) },
@@ -153,17 +166,75 @@ fun AppPulgares(repo: Repositorio) {
                                     )
                                 )
                             },
+                            onAbrirAjustes = { pantalla = Pantalla.AjustesGrupo(actual.grupoId) },
+                            onBorrarPago = { pago ->
+                                vm.borraPago(pago.id)
+                                avisa("Bizum deshecho. Las cuentas vuelven a como estaban.")
+                            }
+                        )
+                    }
+                }
+
+                is Pantalla.AjustesGrupo -> {
+                    val estado = estadoGrupo
+                    if (estado == null || estado.grupo.id != actual.grupoId) {
+                        Cargando()
+                    } else {
+                        EditarGrupoScreen(
+                            estado = estado,
+                            onGuardarNombre = { nombre, emoji ->
+                                vm.renombraGrupo(estado.grupo, nombre, emoji)
+                                avisa("Grupo actualizado.")
+                            },
+                            onAnadirColega = { nombre ->
+                                vm.anadeColega(actual.grupoId, nombre, estado.grupo.colegas.size)
+                                avisa("$nombre se une al grupo. Que se prepare.")
+                            },
+                            onQuitarColega = { colega ->
+                                vm.quitaColega(actual.grupoId, estado.grupo.colegas, colega)
+                                avisa("${colega.nombre} sale del grupo.")
+                            },
+                            onRenombrarColega = { colega, nombre ->
+                                vm.renombraColega(actual.grupoId, estado.grupo.colegas, colega, nombre)
+                            },
+                            onEditarAvatarDe = { colega ->
+                                pantalla = Pantalla.AvatarDeColega(actual.grupoId, colega.id)
+                            },
                             onBorrarGrupo = {
                                 vm.borraGrupo(actual.grupoId)
                                 pantalla = Pantalla.Portada
-                            }
+                                avisa("Grupo borrado. Aquí no ha pasado nada.")
+                            },
+                            onVolver = { pantalla = Pantalla.Grupo(actual.grupoId) }
+                        )
+                    }
+                }
+
+                is Pantalla.AvatarDeColega -> {
+                    val estado = estadoGrupo
+                    val colega = estado?.grupo?.colega(actual.colegaId)
+                    if (estado == null || colega == null) {
+                        Cargando()
+                    } else {
+                        EditorAvatarScreen(
+                            inicial = avatarDe(colega),
+                            titulo = "El monigote de ${colega.nombre}",
+                            onGuardar = { monigote ->
+                                vm.guardaAvatarDe(colega.id, monigote)
+                                pantalla = Pantalla.AjustesGrupo(actual.grupoId)
+                                avisa("Así se queda ${colega.nombre}.")
+                            },
+                            onVolver = { pantalla = Pantalla.AjustesGrupo(actual.grupoId) }
                         )
                     }
                 }
 
                 is Pantalla.Gasto -> {
                     val estado = estadoGrupo
-                    if (estado == null) {
+                    // Se comprueba tambien el id: al cambiar de grupo el flujo
+                    // tarda un instante en traer el nuevo, y sin esto la pantalla
+                    // pintaria los colegas del grupo anterior.
+                    if (estado == null || estado.grupo.id != actual.grupoId) {
                         Cargando()
                     } else {
                         val existente: Gasto? = actual.gastoId?.let { id ->
@@ -214,6 +285,9 @@ fun AppPulgares(repo: Repositorio) {
                     onVolver = { pantalla = Pantalla.Portada }
                 )
             }
+
+            // Va al final del Box para caer por encima de cualquier pantalla.
+            LluviaDeConfeti(dispara = celebrar, onFin = finCelebracion)
         }
     }
 }

@@ -26,6 +26,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -206,7 +208,12 @@ fun Importe(
     }
 }
 
-/** Botoncito redondo de icono (pulgares, flechas del editor, cerrar). */
+/**
+ * Botoncito redondo de icono (pulgares, flechas del editor, cerrar).
+ *
+ * [descripcion] es lo que lee el lector de pantalla: un boton cuyo texto es "‹"
+ * o un emoji no dice nada por si solo.
+ */
 @Composable
 fun BotonRedondo(
     contenido: String,
@@ -214,7 +221,8 @@ fun BotonRedondo(
     modifier: Modifier = Modifier,
     color: Color = Paleta.Papel,
     tamanoTexto: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.titleMedium,
-    sombra: Dp = 3.dp
+    sombra: Dp = 3.dp,
+    descripcion: String? = null
 ) {
     val interaccion = remember { MutableInteractionSource() }
     val pulsado by interaccion.collectIsPressedAsState()
@@ -223,6 +231,11 @@ fun BotonRedondo(
         label = "hundidoRedondo"
     )
     val forma = RoundedCornerShape(50)
+    val etiqueta = if (descripcion == null) {
+        Modifier
+    } else {
+        Modifier.semantics { contentDescription = descripcion }
+    }
     Box(
         modifier = modifier
             .offset(x = hundido, y = hundido)
@@ -231,6 +244,7 @@ fun BotonRedondo(
             .background(color)
             .border(BorderStroke(2.dp, Paleta.Tinta), forma)
             .clickable(interactionSource = interaccion, indication = null) { onClick() }
+            .then(etiqueta)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {

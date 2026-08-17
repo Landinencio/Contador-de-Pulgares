@@ -106,6 +106,15 @@ data class Gasto(
         is Reparto.Exacto -> r.importes
     }
 
+    /**
+     * Las partes suman exactamente el importe. A escote y por partes cuadran
+     * siempre por construccion; [Reparto.Exacto] depende de lo que teclee la
+     * gente, y si no cuadra los saldos del grupo dejarian de sumar cero. La
+     * pantalla de gasto no deja guardar un reparto descuadrado, y este flag
+     * existe para que un gasto importado o migrado tampoco cuele.
+     */
+    val cuadra: Boolean get() = deudas().values.sum() == importeCentimos
+
     /** Semilla estable para rotar a quien le cae el centimo de mas. */
     private fun rotacion(): Int {
         val hash = id.hashCode()

@@ -65,6 +65,34 @@ class PulgaresViewModel(private val repo: Repositorio) : ViewModel() {
         viewModelScope.launch { repo.guardaColegas(grupoId, colegas) }
     }
 
+    fun renombraGrupo(grupo: com.pulgares.app.domain.model.Grupo, nombre: String, emoji: String) {
+        viewModelScope.launch { repo.renombraGrupo(grupo, nombre, emoji) }
+    }
+
+    /**
+     * Saca a un colega de la lista. Sus gastos NO se tocan: reescribir gastos ya
+     * repartidos cambiaria cuentas que el grupo ya dio por buenas.
+     */
+    fun quitaColega(grupoId: String, colegas: List<Colega>, fuera: Colega) {
+        viewModelScope.launch {
+            repo.guardaColegas(grupoId, colegas.filterNot { it.id == fuera.id })
+        }
+    }
+
+    fun renombraColega(grupoId: String, colegas: List<Colega>, colega: Colega, nombre: String) {
+        viewModelScope.launch {
+            repo.guardaColegas(
+                grupoId,
+                colegas.map { if (it.id == colega.id) it.copy(nombre = nombre) else it }
+            )
+        }
+    }
+
+    /** Deshace el ultimo bizum registrado por error. */
+    fun borraPago(pagoId: String) {
+        viewModelScope.launch { repo.borraPago(pagoId) }
+    }
+
     /** Apunta un gasto nuevo. Devuelve el gasto guardado por si hay que celebrarlo. */
     fun apuntaGasto(
         grupoId: String,

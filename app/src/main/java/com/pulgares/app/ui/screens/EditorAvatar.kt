@@ -63,7 +63,7 @@ fun EditorAvatarScreen(
                 .padding(start = 16.dp, end = 20.dp, top = 16.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            BotonRedondo(contenido = "‹", onClick = onVolver)
+            BotonRedondo(contenido = "‹", onClick = onVolver, descripcion = "Volver sin guardar")
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -79,6 +79,7 @@ fun EditorAvatarScreen(
             }
             BotonRedondo(
                 contenido = "🎲",
+                descripcion = "Un monigote al azar",
                 onClick = { monigote = Monigote.aleatorio() },
                 color = Paleta.MostazaPulgar
             )
@@ -225,6 +226,7 @@ fun EditorAvatarScreen(
             )
             BotonRedondo(
                 contenido = "↺",
+                descripcion = "Deshacer los cambios",
                 onClick = { monigote = inicial },
                 color = Paleta.CremaHundido
             )

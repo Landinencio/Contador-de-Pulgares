@@ -6,6 +6,7 @@ import com.pulgares.app.domain.model.Pago
 import com.pulgares.app.domain.model.Reparto
 import com.pulgares.app.domain.settlement.Cuentas
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -205,6 +206,80 @@ class CuentasTest {
         assertTrue(Cuentas.loMioDelPlan(plan, "r").enPaz)
     }
 
+
+    @Test
+    fun `un reparto exacto que no suma el importe no cuadra`() {
+        // La pantalla de gasto no deja guardar esto, pero el modelo tiene que
+        // saber detectarlo: si colara, los saldos del grupo dejarian de sumar cero.
+        val descuadrado = Gasto(
+            id = "1",
+            grupoId = "g",
+            concepto = "Mal repartido",
+            importeCentimos = 3000,
+            pagadorId = "r",
+            fechaMillis = 0L,
+            reparto = Reparto.Exacto(mapOf("r" to 1000L, "a" to 500L))
+        )
+        assertFalse(descuadrado.cuadra)
+
+        val bien = descuadrado.copy(
+            reparto = Reparto.Exacto(mapOf("r" to 2000L, "a" to 1000L))
+        )
+        assertTrue(bien.cuadra)
+    }
+
+    @Test
+    fun `los repartos a escote y por partes cuadran siempre`() {
+        // Importes elegidos para que la division nunca sea exacta.
+        listOf(1L, 7L, 99L, 1000L, 3333L, 99_999L).forEach { importe ->
+            listOf(1, 2, 3, 5, 7).forEach { cuantos ->
+                val ids = (1..cuantos).map { "c$it" }
+                val escote = Gasto(
+                    id = "e-$importe-$cuantos",
+                    grupoId = "g",
+                    concepto = "",
+                    importeCentimos = importe,
+                    pagadorId = "c1",
+                    fechaMillis = 0L,
+                    reparto = Reparto.Escote(ids)
+                )
+                assertTrue("Escote descuadrado: $importe entre $cuantos", escote.cuadra)
+
+                val porPartes = escote.copy(
+                    reparto = Reparto.PorPartes(ids.mapIndexed { i, id -> id to (i + 1) }.toMap())
+                )
+                assertTrue("Partes descuadradas: $importe entre $cuantos", porPartes.cuadra)
+            }
+        }
+    }
+
+    @Test
+    fun `un gasto de un centimo entre tres sigue cuadrando`() {
+        val calderilla = Gasto(
+            id = "1",
+            grupoId = "g",
+            concepto = "El chicle",
+            importeCentimos = 1,
+            pagadorId = "r",
+            fechaMillis = 0L,
+            reparto = Reparto.Escote(listOf("r", "a", "l"))
+        )
+        assertEquals(1L, calderilla.deudas().values.sum())
+        // Uno paga el centimo y los otros dos, nada.
+        assertEquals(setOf(0L, 1L), calderilla.deudas().values.toSet())
+        assertEquals(0L, Cuentas.saldos(cuadrilla, listOf(calderilla)).sumOf { it.neto })
+    }
+
+    @Test
+    fun `un grupo de una sola persona no genera plan`() {
+        val soloYo = listOf(ruben)
+        val gastos = listOf(
+            Gasto("1", "g", "Mi cena", 2000, "r", 0L, reparto = Reparto.Escote(listOf("r")))
+        )
+        val saldos = Cuentas.saldos(soloYo, gastos)
+        assertTrue(saldos.all { it.enPaz })
+        assertTrue(Cuentas.planDePagos(saldos).isEmpty())
+    }
     @Test
     fun `los pulgares cuentan arriba menos abajo`() {
         val votado = gasto("1", 1000, "r").copy(

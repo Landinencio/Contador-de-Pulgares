@@ -39,6 +39,7 @@ import com.pulgares.app.domain.model.Reparto
 import com.pulgares.app.ui.components.BotonPegatina
 import com.pulgares.app.ui.components.BotonRedondo
 import com.pulgares.app.ui.components.Chapa
+import com.pulgares.app.ui.components.DialogoConfirmar
 import com.pulgares.app.ui.components.Pegatina
 import com.pulgares.app.ui.theme.Paleta
 
@@ -72,6 +73,7 @@ fun NuevoGastoScreen(
     var pagadorId by remember { mutableStateOf(gastoExistente?.pagadorId ?: yo?.id ?: colegas.firstOrNull()?.id ?: "") }
     var categoria by remember { mutableStateOf(gastoExistente?.categoria ?: Categoria.BIRRAS) }
     var nota by remember { mutableStateOf(gastoExistente?.nota ?: "") }
+    var borrando by remember { mutableStateOf(false) }
 
     val repartoInicial = gastoExistente?.reparto
     var modo by remember {
@@ -130,7 +132,7 @@ fun NuevoGastoScreen(
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                BotonRedondo(contenido = "‹", onClick = onVolver)
+                BotonRedondo(contenido = "‹", onClick = onVolver, descripcion = "Volver al grupo")
                 Spacer(Modifier.width(12.dp))
                 Text(
                     text = if (gastoExistente == null) "Nuevo gasto" else "Editar gasto",
@@ -139,7 +141,12 @@ fun NuevoGastoScreen(
                     modifier = Modifier.weight(1f)
                 )
                 if (onBorrar != null) {
-                    BotonRedondo(contenido = "🗑", onClick = onBorrar, color = Paleta.RojoDeudaSuave)
+                    BotonRedondo(
+                        contenido = "🗑",
+                        descripcion = "Borrar este gasto",
+                        onClick = { borrando = true },
+                        color = Paleta.RojoDeudaSuave
+                    )
                 }
             }
         }
@@ -338,6 +345,21 @@ fun NuevoGastoScreen(
             )
         }
     }
+
+    if (borrando && onBorrar != null) {
+        DialogoConfirmar(
+            titulo = "¿Borrar el gasto?",
+            mensaje = "«${gastoExistente?.concepto.orEmpty()}» por " +
+                "${Dinero.formatea(gastoExistente?.importeCentimos ?: 0L)} desaparece del grupo, " +
+                "y los saldos de todos se recalculan sin él.",
+            textoConfirmar = "Borrar",
+            onConfirmar = {
+                borrando = false
+                onBorrar()
+            },
+            onCancelar = { borrando = false }
+        )
+    }
 }
 
 @Composable
@@ -404,14 +426,24 @@ private fun FilaReparto(
                 )
 
                 ModoReparto.PARTES -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    BotonRedondo(contenido = "−", onClick = { onPartes(partes - 1) }, sombra = 2.dp)
+                    BotonRedondo(
+                        contenido = "−",
+                        descripcion = "Una parte menos para ${colega.nombre}",
+                        onClick = { onPartes(partes - 1) },
+                        sombra = 2.dp
+                    )
                     Box(
                         modifier = Modifier.width(38.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(text = "$partes", style = MaterialTheme.typography.titleLarge)
                     }
-                    BotonRedondo(contenido = "+", onClick = { onPartes(partes + 1) }, sombra = 2.dp)
+                    BotonRedondo(
+                        contenido = "+",
+                        descripcion = "Una parte más para ${colega.nombre}",
+                        onClick = { onPartes(partes + 1) },
+                        sombra = 2.dp
+                    )
                 }
 
                 ModoReparto.EXACTO -> OutlinedTextField(

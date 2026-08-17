@@ -66,7 +66,7 @@ fun NuevoGrupoScreen(
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                BotonRedondo(contenido = "‹", onClick = onVolver)
+                BotonRedondo(contenido = "‹", onClick = onVolver, descripcion = "Volver a la portada")
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(
@@ -161,6 +161,7 @@ fun NuevoGrupoScreen(
                         Spacer(Modifier.width(8.dp))
                         BotonRedondo(
                             contenido = "✕",
+                            descripcion = "Quitar a este colega de la lista",
                             onClick = { colegas.removeAt(indice) },
                             color = Paleta.RojoDeudaSuave,
                             sombra = 2.dp

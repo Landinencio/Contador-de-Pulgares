@@ -122,6 +122,10 @@ dependencies {
 
     implementation("androidx.datastore:datastore-preferences:1.1.2")
 
+    // Confeti cuando un grupo queda a cero. Es la unica libreria de adorno que
+    // se permite la app: 90 KB y sin dependencias de Google.
+    implementation("nl.dionsegijn:konfetti-compose:2.0.5")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
