@@ -1,0 +1,55 @@
+name: Build APK
+
+on:
+  push:
+    branches:
+      - main
+      - "claude/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Sincronizacion opcional de grupos. Si el secreto no existe, la app
+      # funciona igual: 100% local y con el boton de sincronizar oculto.
+      CDP_SYNC_TOKEN: ${{ secrets.CDP_SYNC_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Ejecutar tests unitarios
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Compilar APK debug
+        run: ./gradlew assembleDebug -PappVersionCode=$GITHUB_RUN_NUMBER --no-daemon --stacktrace
+
+      - name: Subir APK como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publicar release con el APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          TAG="test-apk"
+          APK="contador-de-pulgares.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$APK"
+
+          gh release delete "$TAG" --yes || true
+          git push origin ":refs/tags/$TAG" || true
+          gh release create "$TAG" "$APK" \
+            --title "Contador de Pulgares (build $GITHUB_RUN_NUMBER)" \
+            --notes "APK de prueba. Instalar y a cobrar."

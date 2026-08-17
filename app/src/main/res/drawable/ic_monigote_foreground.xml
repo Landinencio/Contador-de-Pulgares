@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  El monigote de la casa como icono de launcher. Adaptive icon: el lienzo son
+  108x108 y la zona que siempre se ve es el circulo central de 72, asi que el
+  bicho vive entre y=22 e y=86.
+
+  Los brazos y las patas son tubos: el mismo trazado dos veces, primero gordo
+  en negro (contorno) y luego mas fino en rosa (relleno). Igual que en
+  Cuerpo.kt, para que el icono y el avatar de la app sean el mismo bicho.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Patas: contorno -->
+    <path
+        android:strokeColor="#17161A"
+        android:strokeWidth="8.6"
+        android:strokeLineCap="round"
+        android:pathData="M47,64 C46,72 44.5,77 43,82" />
+    <path
+        android:strokeColor="#17161A"
+        android:strokeWidth="8.6"
+        android:strokeLineCap="round"
+        android:pathData="M61,64 C62,72 63.5,77 65,82" />
+    <!-- Pies: contorno -->
+    <path
+        android:fillColor="#17161A"
+        android:pathData="M38.5,84.5 a5.4,3.6 0 1,0 10.8,0 a5.4,3.6 0 1,0 -10.8,0 Z" />
+    <path
+        android:fillColor="#17161A"
+        android:pathData="M58.7,84.5 a5.4,3.6 0 1,0 10.8,0 a5.4,3.6 0 1,0 -10.8,0 Z" />
+
+    <!-- Brazos: contorno -->
+    <path
+        android:strokeColor="#17161A"
+        android:strokeWidth="8"
+        android:strokeLineCap="round"
+        android:pathData="M67,44 C72,41.5 75,37 78,33" />
+    <path
+        android:strokeColor="#17161A"
+        android:strokeWidth="8"
+        android:strokeLineCap="round"
+        android:pathData="M41,45 C36,48 32.5,52 31,56" />
+
+    <!-- Patas y brazos: relleno rosa por encima del contorno -->
+    <path
+        android:strokeColor="#F3C2CD"
+        android:strokeWidth="5.8"
+        android:strokeLineCap="round"
+        android:pathData="M47,64 C46,72 44.5,77 43,82" />
+    <path
+        android:strokeColor="#F3C2CD"
+        android:strokeWidth="5.8"
+        android:strokeLineCap="round"
+        android:pathData="M61,64 C62,72 63.5,77 65,82" />
+    <path
+        android:fillColor="#F3C2CD"
+        android:pathData="M39.7,84.2 a4.2,2.6 0 1,0 8.4,0 a4.2,2.6 0 1,0 -8.4,0 Z" />
+    <path
+        android:fillColor="#F3C2CD"
+        android:pathData="M59.9,84.2 a4.2,2.6 0 1,0 8.4,0 a4.2,2.6 0 1,0 -8.4,0 Z" />
+    <path
+        android:strokeColor="#F3C2CD"
+        android:strokeWidth="5.2"
+        android:strokeLineCap="round"
+        android:pathData="M67,44 C72,41.5 75,37 78,33" />
+    <path
+        android:strokeColor="#F3C2CD"
+        android:strokeWidth="5.2"
+        android:strokeLineCap="round"
+        android:pathData="M41,45 C36,48 32.5,52 31,56" />
+
+    <!-- Cuerpo: cabeza y tronco son la misma alubia -->
+    <path
+        android:fillColor="#F3C2CD"
+        android:strokeColor="#17161A"
+        android:strokeWidth="2.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M54,22 C64,22 70,30 70,42 C70,54 69,62 67,68 C65,73.5 43,73.5 41,68 C39,62 38,54 38,42 C38,30 44,22 54,22 Z" />
+
+    <!-- Sombra suave del lado izquierdo, para dar volumen -->
+    <path
+        android:fillColor="#E3A4B3"
+        android:pathData="M41.5,32 C39,42 39,56 42,69 C40,69 38.6,62 38.2,54 C37.8,44 38.6,36 41.5,32 Z" />
+
+    <!-- Ojos -->
+    <path
+        android:fillColor="#17161A"
+        android:pathData="M41.5,40 a6.2,7.6 0 1,0 12.4,0 a6.2,7.6 0 1,0 -12.4,0 Z" />
+    <path
+        android:fillColor="#17161A"
+        android:pathData="M55.5,40 a6.2,7.6 0 1,0 12.4,0 a6.2,7.6 0 1,0 -12.4,0 Z" />
+
+    <!-- Los brillitos de los ojos -->
+    <path
+        android:fillColor="#FFFDF8"
+        android:pathData="M49.4,36.4 a1.9,1.7 0 1,0 3.8,0 a1.9,1.7 0 1,0 -3.8,0 Z" />
+    <path
+        android:fillColor="#FFFDF8"
+        android:pathData="M63.4,36.4 a1.9,1.7 0 1,0 3.8,0 a1.9,1.7 0 1,0 -3.8,0 Z" />
+
+    <!-- Brillo de plastico en la coronilla -->
+    <path
+        android:fillColor="#FFFDF8"
+        android:fillAlpha="0.5"
+        android:pathData="M44,28 a4.4,2.6 0 1,0 8.8,0 a4.4,2.6 0 1,0 -8.8,0 Z" />
+</vector>

@@ -1,0 +1,245 @@
+package com.pulgares.app.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.pulgares.app.avatar.AvatarMonigote
+import com.pulgares.app.avatar.MascotaPulgares
+import com.pulgares.app.avatar.Monigote
+import com.pulgares.app.data.ResumenGrupo
+import com.pulgares.app.domain.model.Dinero
+import com.pulgares.app.frases.Frases
+import com.pulgares.app.frases.Momento
+import com.pulgares.app.ui.components.BotonPegatina
+import com.pulgares.app.ui.components.BotonRedondo
+import com.pulgares.app.ui.components.Chapa
+import com.pulgares.app.ui.components.Pegatina
+import com.pulgares.app.ui.theme.Paleta
+
+/**
+ * La portada: mi monigote, el resumen de si debo o me deben, y los grupos.
+ * Lo primero que se ve al abrir es cuanto dinero hay en juego y una coña.
+ */
+@Composable
+fun PortadaScreen(
+    grupos: List<ResumenGrupo>,
+    miAvatar: Monigote,
+    onAbrirGrupo: (String) -> Unit,
+    onNuevoGrupo: () -> Unit,
+    onEditarAvatar: () -> Unit
+) {
+    val deboTotal = grupos.filter { it.miNeto < 0 }.sumOf { -it.miNeto }
+    val meDebenTotal = grupos.filter { it.miNeto > 0 }.sumOf { it.miNeto }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(start = 20.dp, end = 24.dp, top = 16.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        // ---- cabecera con mi monigote ----
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Pegatina(
+                    radio = 50.dp,
+                    sombra = 4.dp,
+                    color = Paleta.RosaMonigote,
+                    onClick = onEditarAvatar
+                ) {
+                    AvatarMonigote(
+                        monigote = miAvatar,
+                        tamano = 62,
+                        conFondo = false,
+                        descripcion = "Tu monigote. Toca para cambiarlo."
+                    )
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Contador de Pulgares",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "Sin anuncios, sin límites, sin piedad",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // ---- el resumen gordo ----
+        item {
+            ResumenPersonal(deboTotal = deboTotal, meDebenTotal = meDebenTotal)
+        }
+
+        // ---- grupos ----
+        if (grupos.isEmpty()) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    MascotaPulgares(tamano = 150)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = Frases.para(Momento.SIN_GRUPOS, semilla = 1),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
+                }
+            }
+        } else {
+            item {
+                Text(
+                    text = "Tus grupos",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+            items(grupos, key = { it.grupo.id }) { resumen ->
+                FilaGrupo(resumen = resumen, onClick = { onAbrirGrupo(resumen.grupo.id) })
+            }
+        }
+
+        item {
+            Spacer(Modifier.height(6.dp))
+            BotonPegatina(
+                texto = "Nuevo grupo",
+                emoji = "👥",
+                onClick = onNuevoGrupo,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+/** El cartel de "debes X" / "te deben Y", con su coña correspondiente. */
+@Composable
+private fun ResumenPersonal(deboTotal: Long, meDebenTotal: Long) {
+    val enPaz = deboTotal == 0L && meDebenTotal == 0L
+    val color = when {
+        enPaz -> Paleta.VerdePazSuave
+        deboTotal > meDebenTotal -> Paleta.RojoDeudaSuave
+        else -> Paleta.MostazaSuave
+    }
+    val frase = when {
+        enPaz -> Frases.para(Momento.EN_PAZ, semilla = 2)
+        deboTotal > meDebenTotal -> Frases.para(
+            Momento.CABECERA_DEBO,
+            cuanto = Dinero.formatea(deboTotal),
+            semilla = deboTotal
+        )
+        else -> Frases.para(
+            Momento.CABECERA_ME_DEBEN,
+            cuanto = Dinero.formatea(meDebenTotal),
+            semilla = meDebenTotal
+        )
+    }
+
+    Pegatina(color = color, sombra = 5.dp, radio = 26.dp, modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text(
+                text = frase,
+                style = MaterialTheme.typography.titleLarge,
+                color = Paleta.Tinta
+            )
+            if (!enPaz) {
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (deboTotal > 0) {
+                        Chapa(texto = "Debes ${Dinero.formatea(deboTotal)}", color = Paleta.RojoDeuda, colorTexto = Paleta.Papel)
+                    }
+                    if (meDebenTotal > 0) {
+                        Chapa(texto = "Te deben ${Dinero.formatea(meDebenTotal)}", color = Paleta.VerdePaz, colorTexto = Paleta.Papel)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Una fila de grupo: emoji, nombre, cuántos gastos y mi saldo ahí. */
+@Composable
+private fun FilaGrupo(resumen: ResumenGrupo, onClick: () -> Unit) {
+    Pegatina(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+        sombra = 4.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.width(46.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = resumen.grupo.emoji, style = MaterialTheme.typography.displayMedium)
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = resumen.grupo.nombre,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = detalleGrupo(resumen),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            when {
+                resumen.enPaz -> Chapa(texto = "En paz", color = Paleta.VerdePazSuave)
+                resumen.miNeto < 0 -> Chapa(
+                    texto = "-${Dinero.formatea(-resumen.miNeto)}",
+                    color = Paleta.RojoDeuda,
+                    colorTexto = Paleta.Papel
+                )
+                resumen.miNeto > 0 -> Chapa(
+                    texto = "+${Dinero.formatea(resumen.miNeto)}",
+                    color = Paleta.VerdePaz,
+                    colorTexto = Paleta.Papel
+                )
+                else -> Chapa(texto = "A cero", color = Paleta.CremaHundido)
+            }
+        }
+    }
+}
+
+private fun detalleGrupo(resumen: ResumenGrupo): String {
+    val gente = resumen.grupo.colegas.size
+    val gastos = when (resumen.cuantosGastos) {
+        0 -> "sin gastos"
+        1 -> "1 gasto"
+        else -> "${resumen.cuantosGastos} gastos"
+    }
+    return "$gente colegas · $gastos · ${Dinero.formateaCorto(resumen.totalGastado)}"
+}

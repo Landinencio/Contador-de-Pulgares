@@ -1,0 +1,229 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Monigote — comprobación de geometría</title>
+<style>
+  body { background:#FBF5EA; font-family: system-ui; margin:16px; color:#17161A }
+  h2 { margin: 18px 0 6px; font-size: 15px }
+  .fila { display:flex; flex-wrap:wrap; gap:6px }
+  .celda { text-align:center; font-size:10px; width:92px }
+  canvas { width:88px; height:88px; background:#FFFDF8; border:2px solid #17161A; border-radius:14px }
+</style>
+<body>
+<h2>Formas del cuerpo (8)</h2><div class="fila" id="formas"></div>
+<h2>Ojos (16)</h2><div class="fila" id="ojos"></div>
+<h2>Bocas (16)</h2><div class="fila" id="bocas"></div>
+<h2>Pelos y tocados</h2><div class="fila" id="tocados"></div>
+<script>
+// Port 1:1 de la geometria de Cuerpo.kt / PiezasCara.kt para comprobar
+// proporciones. Espacio virtual 0..100 igual que el Pincel de Kotlin.
+const LADO = 100;
+const CX = 50, CIMA = 20, SUELO = 74, OJOS_Y = 39, OJOS_SEP = 11.5, BOCA_Y = 55, PIES_Y = 93;
+const OJO_IZQ = CX - OJOS_SEP, OJO_DER = CX + OJOS_SEP;
+const TINTA = '#17161A', BLANCA = '#FFFDF8', ROSA = '#FF7BA8', ROJA = '#E8443C',
+      AMARILLA = '#FFC53D', AZUL = '#4C9BE8', GRIS = '#8B8794', VERDE='#3EBB7C';
+const PIEL = '#F3C2CD', SOMBRA = '#DFA6B4';
+
+const siluetas = [
+  {a:21, m:23, b:20, cima:CIMA, base:SUELO, plana:false},      // alubia
+  {a:24, m:26.5, b:24, cima:22, base:SUELO, plana:false},      // patata
+  {a:16, m:22, b:24, cima:CIMA, base:SUELO, plana:false},      // huevo
+  {a:14, m:19, b:27, cima:CIMA, base:SUELO, plana:false},      // pera
+  {a:25, m:27, b:25, cima:28, base:SUELO, plana:false},        // croqueta
+  {a:14.5, m:15.5, b:14, cima:15, base:SUELO, plana:false},    // churro
+  {a:25, m:26, b:25, cima:23, base:71, plana:false},           // bola
+  {a:17, m:22, b:28, cima:CIMA, base:SUELO, plana:true}        // flan
+];
+const nombresFormas = ['Alubia','Patata','Huevo','Pera','Croqueta','Churro','Bola','Flan'];
+const nombresOjos = ['Normales','Saltones','Bizcos','Dormido','Enamorado','Euros','Espiral','Guiño','Enfadado','Ojeras','Láser','Estrellitas','Fulminado','Robot','Llorón','Entrecerrados'];
+const nombresBocas = ['Sonrisa','Sonrisota','Dientes','Mueca','Lengua','Silbando','Colmillos','Grito','Beso','Cremallera','Sin boca','Chupete','Babeando','Torcida','Ohhh','Rechinando'];
+
+function mk(parent, label) {
+  const d = document.createElement('div'); d.className='celda';
+  const c = document.createElement('canvas'); c.width=200; c.height=200;
+  d.appendChild(c); const t=document.createElement('div'); t.textContent=label; d.appendChild(t);
+  document.getElementById(parent).appendChild(d);
+  const x = c.getContext('2d'); x.scale(2,2); return x;
+}
+const P = (x,y)=>[x,y];
+function trazo(g, w, color){ g.lineWidth=w; g.strokeStyle=color||TINTA; g.lineCap='round'; g.lineJoin='round'; }
+function linea(g,x1,y1,x2,y2,color,w){ trazo(g,w||3.2,color); g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke(); }
+function circulo(g,x,y,r,color){ g.fillStyle=color; g.beginPath(); g.arc(x,y,r,0,7); g.fill(); }
+function circContorno(g,x,y,r,color,w){ trazo(g,w||3.2,color); g.beginPath(); g.arc(x,y,r,0,7); g.stroke(); }
+function ovalo(g,x,y,rx,ry,color){ g.fillStyle=color; g.beginPath(); g.ellipse(x,y,rx,ry,0,0,7); g.fill(); }
+function ovalContorno(g,x,y,rx,ry,color,w){ trazo(g,w||3.2,color); g.beginPath(); g.ellipse(x,y,rx,ry,0,0,7); g.stroke(); }
+function arco(g,x,y,rx,ry,desde,barrido,color,w){ trazo(g,w||3.2,color); g.beginPath();
+  g.ellipse(x,y,rx,ry,0, desde*Math.PI/180, (desde+barrido)*Math.PI/180); g.stroke(); }
+function caja(g,x,y,an,al,r,color,soloBorde,w){
+  g.beginPath(); g.roundRect(x-an/2,y-al/2,an,al,r);
+  if(soloBorde){ trazo(g,w||3.2,color); g.stroke(); } else { g.fillStyle=color; g.fill(); } }
+function poligono(g,pts,color,borde,w){ g.beginPath(); g.moveTo(pts[0][0],pts[0][1]);
+  pts.slice(1).forEach(p=>g.lineTo(p[0],p[1])); g.closePath(); g.fillStyle=color; g.fill();
+  if(borde!==null){ trazo(g,w||1.6,borde||TINTA); g.stroke(); } }
+
+function caminoCuerpo(g, forma, aplastado) {
+  const s = siluetas[forma % siluetas.length];
+  const cima = s.cima + aplastado*3, base = s.base, medio = (cima+base)/2;
+  const ens = 1 + aplastado*0.06;
+  const wA = s.a*ens, wM = s.m*ens, wB = s.b*ens;
+  g.beginPath(); g.moveTo(CX, cima);
+  g.bezierCurveTo(CX+wA*1.05, cima, CX+wM, cima+(medio-cima)*0.45, CX+wM, medio);
+  if (s.plana) {
+    g.bezierCurveTo(CX+wM, medio+(base-medio)*0.6, CX+wB, base-6, CX+wB, base-1.5);
+    g.quadraticCurveTo(CX+wB, base, CX+wB-3, base);
+    g.lineTo(CX-wB+3, base);
+    g.quadraticCurveTo(CX-wB, base, CX-wB, base-1.5);
+    g.bezierCurveTo(CX-wB, base-6, CX-wM, medio+(base-medio)*0.6, CX-wM, medio);
+  } else {
+    g.bezierCurveTo(CX+wM, medio+(base-medio)*0.55, CX+wB*1.02, base-(base-medio)*0.12, CX+wB*0.72, base);
+    g.bezierCurveTo(CX+wB*0.3, base+2.6, CX-wB*0.3, base+2.6, CX-wB*0.72, base);
+    g.bezierCurveTo(CX-wB*1.02, base-(base-medio)*0.12, CX-wM, medio+(base-medio)*0.55, CX-wM, medio);
+  }
+  g.bezierCurveTo(CX-wM, cima+(medio-cima)*0.45, CX-wA*1.05, cima, CX, cima);
+  g.closePath();
+}
+
+function tubo(g, relleno, grosor, trazar){ g.beginPath(); trazar(g);
+  trazo(g, grosor+2.8, TINTA); g.stroke(); trazo(g, grosor, relleno); g.stroke(); }
+function remate(g,x,y,r,relleno){ circulo(g,x,y,r+1.4,TINTA); circulo(g,x,y,r,relleno); }
+
+function piernas(g, paso) {
+  const base = SUELO-3, pies = PIES_Y-2;
+  const cI = 3.5*paso;
+  tubo(g, PIEL, 7.5, gg=>{ gg.moveTo(43, base);
+    gg.bezierCurveTo(42, base+8, 41+cI, pies-6, 40.5+cI*1.6, pies); });
+  ovalo(g, 36+cI*1.6, pies+1.5, 6.5, 4, TINTA); ovalo(g, 36+cI*1.6, pies+1.2, 5.2, 2.9, PIEL);
+  const cD = -2.5*paso;
+  tubo(g, PIEL, 7.5, gg=>{ gg.moveTo(57, base);
+    gg.bezierCurveTo(58, base+8, 60+cD, pies-6, 61+cD, pies); });
+  ovalo(g, 65+cD, pies+1.5, 6.5, 4, TINTA); ovalo(g, 65+cD, pies+1.2, 5.2, 2.9, PIEL);
+}
+
+function brazos(g, saludo) {
+  const mdY = 31 - saludo*4, mdX = 82 + saludo*2;
+  tubo(g, PIEL, 7, gg=>{ gg.moveTo(67,46); gg.bezierCurveTo(75,43,79,36,mdX,mdY); });
+  remate(g, mdX, mdY-0.5, 4.6, PIEL);
+  tubo(g, PIEL, 7, gg=>{ gg.moveTo(33,47); gg.bezierCurveTo(25,51,20,57,19,64); });
+  remate(g, 18.5, 65.5, 4.6, PIEL);
+}
+
+function ojoBase(g,x,rx,ry,y){ rx=rx||7; ry=ry||8; y=y||OJOS_Y;
+  ovalo(g,x,y,rx,ry,TINTA); ovalo(g,x+rx*0.32,y-ry*0.38,rx*0.28,ry*0.26,BLANCA); }
+
+function corazon(g,x,y,t,color){ g.beginPath(); g.moveTo(x,y+t*0.85);
+  g.bezierCurveTo(x-t*1.35,y+t*0.05,x-t*0.7,y-t*1.05,x,y-t*0.28);
+  g.bezierCurveTo(x+t*0.7,y-t*1.05,x+t*1.35,y+t*0.05,x,y+t*0.85);
+  g.closePath(); g.fillStyle=color; g.fill(); trazo(g,1.8); g.stroke(); }
+function estrella(g,x,y,t,color){ const p=[]; for(let i=0;i<10;i++){ const r=i%2===0?t:t*0.45;
+  const a=(i*36-90)*Math.PI/180; p.push([x+r*Math.cos(a), y+r*Math.sin(a)]); } poligono(g,p,color,TINTA,1.4); }
+function euro(g,x,y,t,color){ arco(g,x+t*0.15,y,t*0.85,t,40,280,color,t*0.32);
+  linea(g,x-t*0.9,y-t*0.28,x+t*0.55,y-t*0.28,color,t*0.26);
+  linea(g,x-t*0.9,y+t*0.28,x+t*0.55,y+t*0.28,color,t*0.26); }
+function espiral(g,x,y,radio){ let r=radio, a=0; while(r>0.9){ arco(g,x,y,r,r,a,170,TINTA,1.6); a+=170; r-=radio*0.17; } }
+
+function ojos(g, i) {
+  const y = OJOS_Y;
+  if(i===0){ ojoBase(g,OJO_IZQ); ojoBase(g,OJO_DER); }
+  else if(i===1){ [[OJO_IZQ,-1],[OJO_DER,1]].forEach(([x,l])=>{ ovalo(g,x,y,8.5,9,BLANCA);
+    ovalContorno(g,x,y,8.5,9,TINTA,2.8); circulo(g,x+2.2*l,y-1,3.6,TINTA); }); }
+  else if(i===2){ ovalo(g,OJO_IZQ,y,8,8.5,BLANCA); ovalContorno(g,OJO_IZQ,y,8,8.5,TINTA,2.8); circulo(g,OJO_IZQ+3.5,y,3.2,TINTA);
+    ovalo(g,OJO_DER,y,8,8.5,BLANCA); ovalContorno(g,OJO_DER,y,8,8.5,TINTA,2.8); circulo(g,OJO_DER-3.5,y,3.2,TINTA); }
+  else if(i===3){ arco(g,OJO_IZQ,y-1,7,6,20,140,TINTA,3); arco(g,OJO_DER,y-1,7,6,20,140,TINTA,3);
+    linea(g,OJO_IZQ-8,y-4,OJO_IZQ-10.5,y-6,TINTA,2); linea(g,OJO_DER+8,y-4,OJO_DER+10.5,y-6,TINTA,2); }
+  else if(i===4){ corazon(g,OJO_IZQ,y,7.5,ROJA); corazon(g,OJO_DER,y,7.5,ROJA); }
+  else if(i===5){ euro(g,OJO_IZQ,y,7,VERDE); euro(g,OJO_DER,y,7,VERDE); }
+  else if(i===6){ [OJO_IZQ,OJO_DER].forEach(x=>{ ovalo(g,x,y,8,8.5,BLANCA); ovalContorno(g,x,y,8,8.5,TINTA,2.6); espiral(g,x,y,6.5); }); }
+  else if(i===7){ ojoBase(g,OJO_IZQ); arco(g,OJO_DER,y,7,5.5,190,160,TINTA,3.2); }
+  else if(i===8){ ojoBase(g,OJO_IZQ,7,7); ojoBase(g,OJO_DER,7,7);
+    linea(g,OJO_IZQ-8,y-12,OJO_IZQ+6,y-8,TINTA,3.6); linea(g,OJO_DER+8,y-12,OJO_DER-6,y-8,TINTA,3.6); }
+  else if(i===9){ ojoBase(g,OJO_IZQ,7,6.5); ojoBase(g,OJO_DER,7,6.5);
+    arco(g,OJO_IZQ,y+5,6.5,4,10,160,GRIS,2.2); arco(g,OJO_DER,y+5,6.5,4,10,160,GRIS,2.2); }
+  else if(i===10){ [OJO_IZQ,OJO_DER].forEach(x=>{ ovalo(g,x,y,7,5,ROJA); ovalContorno(g,x,y,7,5,TINTA,2.4); ovalo(g,x,y,3,2,BLANCA); });
+    poligono(g,[[OJO_IZQ-6,y+2],[OJO_IZQ-2,y+30],[OJO_IZQ+4,y+2]],'rgba(232,68,60,.45)',null);
+    poligono(g,[[OJO_DER-4,y+2],[OJO_DER+2,y+30],[OJO_DER+6,y+2]],'rgba(232,68,60,.45)',null); }
+  else if(i===11){ estrella(g,OJO_IZQ,y,8,AMARILLA); estrella(g,OJO_DER,y,8,AMARILLA); }
+  else if(i===12){ [OJO_IZQ,OJO_DER].forEach(x=>{ linea(g,x-5.5,y-5.5,x+5.5,y+5.5,TINTA,3.4); linea(g,x+5.5,y-5.5,x-5.5,y+5.5,TINTA,3.4); }); }
+  else if(i===13){ caja(g,CX,y,38,13,6,TINTA); caja(g,CX,y,38,13,6,TINTA,true,2.6);
+    circulo(g,OJO_IZQ,y,3.2,ROJA); circulo(g,OJO_DER,y,3.2,AZUL); }
+  else if(i===14){ arco(g,OJO_IZQ,y,7,6,200,140,TINTA,3.2); arco(g,OJO_DER,y,7,6,200,140,TINTA,3.2);
+    [OJO_IZQ,OJO_DER].forEach(x=>{ g.beginPath(); g.moveTo(x,y+3); g.quadraticCurveTo(x-4,y+10,x,y+15);
+      g.quadraticCurveTo(x+4,y+10,x,y+3); g.closePath(); g.fillStyle='rgba(76,155,232,.85)'; g.fill(); trazo(g,2); g.stroke(); }); }
+  else if(i===15){ [OJO_IZQ,OJO_DER].forEach(x=>{ ovalo(g,x,y,7.5,4,BLANCA); ovalContorno(g,x,y,7.5,4,TINTA,2.6); circulo(g,x,y,2.8,TINTA); }); }
+}
+
+function boca(g, i) {
+  const y = BOCA_Y, cx = CX;
+  if(i===0){ arco(g,cx,y-3,9,7,20,140,TINTA,3); }
+  else if(i===1){ g.beginPath(); g.moveTo(cx-10,y-3); g.quadraticCurveTo(cx,y+11,cx+10,y-3);
+    g.quadraticCurveTo(cx,y-1,cx-10,y-3); g.closePath(); g.fillStyle=TINTA; g.fill(); trazo(g,2.4); g.stroke(); }
+  else if(i===2){ g.beginPath(); g.moveTo(cx-10,y-3); g.quadraticCurveTo(cx,y+10,cx+10,y-3); g.closePath();
+    g.fillStyle=TINTA; g.fill(); trazo(g,2.4); g.stroke(); caja(g,cx,y-1.5,15,3.6,1.2,BLANCA);
+    linea(g,cx-3.5,y-3.3,cx-3.5,y+0.3,GRIS,1.2); linea(g,cx+3.5,y-3.3,cx+3.5,y+0.3,GRIS,1.2); }
+  else if(i===3){ g.beginPath(); g.moveTo(cx-9,y+1); g.quadraticCurveTo(cx-3,y-4,cx,y+1);
+    g.quadraticCurveTo(cx+4,y+5,cx+9,y-2); trazo(g,3); g.stroke(); }
+  else if(i===4){ arco(g,cx,y-3,9,7,20,140,TINTA,3); g.beginPath(); g.moveTo(cx-4,y+2.5);
+    g.quadraticCurveTo(cx-5,y+11,cx+1,y+10.5); g.quadraticCurveTo(cx+5,y+10,cx+4,y+2.5); g.closePath();
+    g.fillStyle=ROSA; g.fill(); trazo(g,2.2); g.stroke(); }
+  else if(i===5){ circulo(g,cx+2,y+1,4.2,TINTA); arco(g,cx-9,y-4,5,4,200,120,TINTA,2.2); }
+  else if(i===6){ g.beginPath(); g.moveTo(cx-10,y-3); g.quadraticCurveTo(cx,y+9,cx+10,y-3); g.closePath();
+    g.fillStyle=TINTA; g.fill(); trazo(g,2.4); g.stroke();
+    poligono(g,[[cx-6,y-2],[cx-3.5,y-2],[cx-4.7,y+4.5]],BLANCA,TINTA,1.4);
+    poligono(g,[[cx+3.5,y-2],[cx+6,y-2],[cx+4.7,y+4.5]],BLANCA,TINTA,1.4); }
+  else if(i===7){ ovalo(g,cx,y+2,7,9,TINTA); ovalContorno(g,cx,y+2,7,9,TINTA,2.6); ovalo(g,cx,y+8,3.5,3,ROSA); }
+  else if(i===8){ corazon(g,cx,y+1,6,ROJA); }
+  else if(i===9){ linea(g,cx-11,y,cx+11,y,TINTA,3);
+    for(let k=0;k<=5;k++){ const x=cx-9+k*3.6; linea(g,x,y-2.6,x,y+2.6,TINTA,1.6); }
+    caja(g,cx+12.5,y,5,6,1.5,GRIS); caja(g,cx+12.5,y,5,6,1.5,TINTA,true,1.8); }
+  else if(i===10){ /* sin boca */ }
+  else if(i===11){ circulo(g,cx,y+3,5.5,ROSA); circContorno(g,cx,y+3,5.5,TINTA,2.6);
+    caja(g,cx,y-2.5,7,4,2,AMARILLA); caja(g,cx,y-2.5,7,4,2,TINTA,true,1.8); }
+  else if(i===12){ arco(g,cx,y-3,9,7,20,140,TINTA,3); g.beginPath(); g.moveTo(cx+5,y+3);
+    g.quadraticCurveTo(cx+4,y+12,cx+7,y+13); g.quadraticCurveTo(cx+9,y+11,cx+8,y+3); g.closePath();
+    g.fillStyle='rgba(76,155,232,.7)'; g.fill(); trazo(g,1.8); g.stroke(); }
+  else if(i===13){ g.beginPath(); g.moveTo(cx-9,y+2); g.quadraticCurveTo(cx,y+8,cx+10,y-4); trazo(g,3.2); g.stroke(); }
+  else if(i===14){ circulo(g,cx,y+1,5.5,TINTA); circulo(g,cx,y+2.5,2.2,ROSA); }
+  else if(i===15){ caja(g,cx,y,20,9,2,TINTA); caja(g,cx,y,18,7,1.5,BLANCA);
+    for(let k=0;k<=4;k++){ const x=cx-7.2+k*3.6; linea(g,x,y-3.5,x,y+3.5,GRIS,1.2); }
+    linea(g,cx-9,y,cx+9,y,GRIS,1.2); }
+}
+
+function pelo(g, i) {
+  const C = CIMA;
+  if(i===1){ linea(g,CX-4,C+1,CX-6,C-8,TINTA,2.4); linea(g,CX,C-0.5,CX,C-10,TINTA,2.4); linea(g,CX+4,C+1,CX+6,C-8,TINTA,2.4); }
+  else if(i===4){ poligono(g,[[CX-14,C+4],[CX-9,C-14],[CX-5,C-2],[CX-1,C-18],[CX+4,C-2],[CX+8,C-13],[CX+13,C+4]],ROSA,TINTA,2); }
+  else if(i===3){ [[CX-16,C-4],[CX-8,C-11],[CX+2,C-13],[CX+12,C-9],[CX+18,C-1],[CX-20,C+4],[CX+21,C+6]]
+      .forEach(([x,y])=>circulo(g,x,y,9,TINTA)); }
+}
+function tocado(g, i) {
+  const C = CIMA;
+  if(i===1){ g.beginPath(); g.moveTo(CX-21,C+4); g.bezierCurveTo(CX-22,C-8,CX+20,C-10,CX+21,C+3);
+    g.bezierCurveTo(CX+10,C+7,CX-10,C+7,CX-21,C+4); g.closePath(); g.fillStyle='rgba(23,22,26,.92)'; g.fill(); trazo(g,2.2); g.stroke();
+    circulo(g,CX+1,C-9,2.4,TINTA); }
+  else if(i===5){ poligono(g,[[CX-17,C+3],[CX-20,C-14],[CX-9,C-5],[CX,C-17],[CX+9,C-5],[CX+20,C-14],[CX+17,C+3]],'#E8B424',TINTA,2.4);
+    circulo(g,CX,C-2,2.4,ROJA); circulo(g,CX-11,C-1,1.8,AZUL); circulo(g,CX+11,C-1,1.8,VERDE); }
+  else if(i===7){ g.beginPath(); g.moveTo(CX-13,C+3); g.lineTo(CX-3,C-22); g.lineTo(CX+3,C-22); g.lineTo(CX+13,C+3);
+    g.closePath(); g.fillStyle='#FF8A3D'; g.fill(); trazo(g,2.4); g.stroke();
+    caja(g,CX,C-9,17,5,1,BLANCA); caja(g,CX,C+4,30,5,1.5,'#FF8A3D'); caja(g,CX,C+4,30,5,1.5,TINTA,true,2); }
+}
+
+function dibuja(g, {forma=0, ojosI=0, bocaI=10, peloI=0, tocadoI=0, paso=0, saludo=0}={}) {
+  g.clearRect(0,0,100,100);
+  ovalo(g, CX, PIES_Y+3.5, 24, 4.2, 'rgba(23,22,26,.16)');
+  piernas(g, paso); brazos(g, saludo);
+  caminoCuerpo(g, forma, 0); g.fillStyle=PIEL; g.fill(); trazo(g,3.2); g.stroke();
+  // volumen
+  g.save(); caminoCuerpo(g, forma, 0); g.clip();
+  g.beginPath(); g.moveTo(28,30); g.bezierCurveTo(24,45,26,62,34,74);
+  g.bezierCurveTo(30,74,27,70,26,62); g.bezierCurveTo(25,50,26,38,28,30); g.closePath();
+  g.fillStyle='rgba(223,166,180,.55)'; g.fill(); g.restore();
+  ovalo(g,41,27,5.5,3.2,'rgba(255,253,248,.5)');
+  caminoCuerpo(g, forma, 0); trazo(g,3.2); g.stroke();
+  ojos(g, ojosI); boca(g, bocaI); pelo(g, peloI); tocado(g, tocadoI);
+}
+
+nombresFormas.forEach((n,i)=>dibuja(mk('formas', n), {forma:i}));
+nombresOjos.forEach((n,i)=>dibuja(mk('ojos', n), {ojosI:i, bocaI:0}));
+nombresBocas.forEach((n,i)=>dibuja(mk('bocas', n), {bocaI:i}));
+[[1,0,'Tres pelos'],[3,0,'Afro'],[4,0,'Cresta'],[0,1,'Boina'],[0,5,'Corona'],[0,7,'Cono']]
+  .forEach(([p,t,n])=>dibuja(mk('tocados', n), {peloI:p, tocadoI:t, bocaI:0}));
+</script>
+</body>
