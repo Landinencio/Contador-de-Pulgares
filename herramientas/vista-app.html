@@ -1,0 +1,1166 @@
+<title>Contador de Pulgares</title>
+<style>
+
+/* Paleta sacada del monigote rosa: papel crema, tinta de rotulador y rosa chicle. */
+:root {
+  --papel: #FBF5EA;
+  --tarjeta: #FFFDF8;
+  --hundido: #F2E9D9;
+  --tinta: #17161A;
+  --tinta-suave: #56525C;
+  --borde: #17161A;
+  --rosa: #F3C2CD;
+  --chicle: #FF5C8A;
+  --mostaza: #FFC53D;
+  --verde: #35B87A;
+  --verde-suave: #D3F3E2;
+  --rojo: #F2504B;
+  --rojo-suave: #FFDCDA;
+  --mostaza-suave: #FFF0C7;
+  --sombra: #17161A;
+  --grosor: 2.5px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --papel: #1B1720;
+    --tarjeta: #272130;
+    --hundido: #322B3C;
+    --tinta: #F6EFE6;
+    --tinta-suave: #B3A9BD;
+    --borde: #0E0C12;
+    --verde-suave: #1E4535;
+    --rojo-suave: #4A2320;
+    --mostaza-suave: #453619;
+    --sombra: #0B0910;
+  }
+}
+:root[data-theme="dark"] {
+  --papel: #1B1720;
+  --tarjeta: #272130;
+  --hundido: #322B3C;
+  --tinta: #F6EFE6;
+  --tinta-suave: #B3A9BD;
+  --borde: #0E0C12;
+  --verde-suave: #1E4535;
+  --rojo-suave: #4A2320;
+  --mostaza-suave: #453619;
+  --sombra: #0B0910;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--papel);
+  color: var(--tinta);
+  font-family: 'Baloo2', system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.envoltorio { max-width: 1080px; margin: 0 auto; padding: 0 24px 80px; }
+
+h1, h2, h3 { font-family: 'Fredoka', system-ui, sans-serif; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(38px, 7vw, 68px); line-height: 1.02; letter-spacing: -0.02em; }
+h2 { font-size: clamp(26px, 3.4vw, 36px); line-height: 1.1; }
+h3 { font-size: 20px; }
+p { margin: 0; }
+.medida { max-width: 62ch; }
+
+/* La pegatina: borde de rotulador y sombra dura desplazada. Es el ladrillo
+   visual de la app y por eso también el de esta página. */
+.pega {
+  background: var(--tarjeta);
+  border: var(--grosor) solid var(--borde);
+  border-radius: 20px;
+  box-shadow: 5px 5px 0 var(--sombra);
+}
+.chapa {
+  display: inline-block;
+  border: 1.8px solid var(--borde);
+  border-radius: 50px;
+  padding: 3px 11px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ---------- portada ---------- */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  max-width: 100%;
+  gap: 32px;
+  align-items: center;
+  padding: 56px 0 40px;
+}
+@media (max-width: 720px) {
+  .hero { grid-template-columns: 1fr; padding-top: 32px; }
+  .escenario { order: -1; justify-self: center; }
+}
+.entradilla {
+  font-size: 19px;
+  color: var(--tinta-suave);
+  margin-top: 18px;
+}
+.bocadillo {
+  position: relative;
+  display: inline-block;
+  background: var(--mostaza);
+  color: #17161A;
+  border: var(--grosor) solid #17161A;
+  border-radius: 18px;
+  box-shadow: 4px 4px 0 #17161A;
+  padding: 10px 18px;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 22px;
+  transform: rotate(-2deg);
+  margin-bottom: 18px;
+}
+.bocadillo::after {
+  content: '';
+  position: absolute;
+  left: 30px; bottom: -13px;
+  width: 16px; height: 16px;
+  background: var(--mostaza);
+  border-right: var(--grosor) solid #17161A;
+  border-bottom: var(--grosor) solid #17161A;
+  transform: rotate(45deg);
+}
+.escenario { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+#retrato { width: 240px; height: 240px; max-width: 100%; }
+.dado {
+  font-family: 'Baloo2', sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  background: var(--chicle);
+  color: #FFFDF8;
+  border: var(--grosor) solid var(--borde);
+  border-radius: 16px;
+  box-shadow: 4px 4px 0 var(--sombra);
+  padding: 10px 18px;
+  transition: transform .08s, box-shadow .08s;
+}
+.dado:hover { background: #E8447A; }
+.dado:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--sombra); }
+.dado:focus-visible { outline: 3px solid var(--mostaza); outline-offset: 3px; }
+.pie-dado { font-size: 13px; color: var(--tinta-suave); font-variant-numeric: tabular-nums; }
+
+/* ---------- secciones ---------- */
+section { padding-top: 60px; }
+.rotulo {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--chicle);
+  margin-bottom: 8px;
+}
+.sub { color: var(--tinta-suave); margin-top: 10px; }
+
+/* ---------- maquetas de móvil ---------- */
+.moviles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: 26px;
+  margin-top: 28px;
+}
+.movil {
+  background: var(--papel);
+  border: 3px solid var(--borde);
+  border-radius: 28px;
+  box-shadow: 6px 6px 0 var(--sombra);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.movil-pie { font-size: 13px; color: var(--tinta-suave); padding: 0 4px 4px; }
+.fila { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.crece { flex: 1 1 120px; min-width: 0; }
+.chapa, .pulgar { white-space: nowrap; }
+.movil, .moviles { min-width: 0; }
+.mini {
+  background: var(--tarjeta);
+  border: 2px solid var(--borde);
+  border-radius: 15px;
+  box-shadow: 3px 3px 0 var(--sombra);
+  padding: 9px 11px;
+}
+.titular-app { font-family: 'Fredoka', sans-serif; font-size: 19px; }
+.dato { font-size: 12.5px; color: var(--tinta-suave); }
+.gordo { font-family: 'Baloo2', sans-serif; font-weight: 800; }
+.emoji-grande { font-size: 26px; line-height: 1; }
+.avatarcito { width: 42px; height: 42px; flex: none; }
+.pareja { display: flex; align-items: center; gap: 8px; flex: none; }
+.boton-falso {
+  background: var(--chicle);
+  color: #FFFDF8;
+  border: 2.5px solid var(--borde);
+  border-radius: 16px;
+  box-shadow: 4px 4px 0 var(--sombra);
+  padding: 11px;
+  text-align: center;
+  font-weight: 800;
+  margin-top: 2px;
+}
+.pulgar {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 2px solid var(--borde);
+  border-radius: 50px;
+  padding: 2px 9px;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--hundido);
+}
+
+/* ---------- parrilla del creador ---------- */
+.parrilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(96px, 100%), 1fr));
+  gap: 12px;
+  margin-top: 22px;
+}
+.pieza { text-align: center; }
+.pieza canvas {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--tarjeta);
+  border: 2px solid var(--borde);
+  border-radius: 16px;
+  box-shadow: 3px 3px 0 var(--sombra);
+  display: block;
+}
+.pieza span { display: block; font-size: 12px; color: var(--tinta-suave); margin-top: 5px; }
+
+.cuenta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+  margin-top: 24px;
+  padding: 18px 22px;
+  font-variant-numeric: tabular-nums;
+}
+.cuenta div { font-size: 14px; color: var(--tinta-suave); }
+.cuenta b { display: block; font-family: 'Fredoka', sans-serif; font-size: 27px; color: var(--tinta); }
+
+/* ---------- frases ---------- */
+.frases {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 18px;
+  margin-top: 26px;
+}
+.bloque-frases { padding: 18px 20px; }
+.bloque-frases h3 { font-size: 17px; margin-bottom: 10px; }
+.bloque-frases ul { margin: 0; padding-left: 18px; }
+.bloque-frases li { margin-bottom: 7px; }
+.rangos { margin-top: 24px; padding: 20px 22px; }
+.escalera { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.flecha { color: var(--tinta-suave); font-size: 13px; }
+
+/* ---------- tripas ---------- */
+.tripas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 18px; margin-top: 24px; }
+.tripas article { padding: 20px 22px; }
+.tripas h3 { margin-bottom: 8px; }
+.tripas p { color: var(--tinta-suave); font-size: 15.5px; }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+  background: var(--hundido);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.pendiente { margin-top: 22px; padding: 20px 22px; }
+.pendiente ul { margin: 10px 0 0; padding-left: 20px; }
+.pendiente li { margin-bottom: 8px; color: var(--tinta-suave); }
+footer {
+  margin-top: 56px;
+  padding-top: 22px;
+  border-top: 2px dashed var(--tinta-suave);
+  font-size: 14px;
+  color: var(--tinta-suave);
+}
+.tabla-pts { margin-top: 22px; padding: 8px 20px; overflow-x: auto; }
+.tabla-pts div {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 18px;
+  align-items: baseline;
+  padding: 11px 0;
+  border-bottom: 1.5px dashed var(--hundido);
+  font-variant-numeric: tabular-nums;
+}
+.tabla-pts div:last-child { border-bottom: none; }
+.tabla-pts span { color: var(--tinta-suave); }
+.tabla-pts b { font-family: 'Fredoka', sans-serif; font-size: 19px; }
+.tabla-pts i { font-style: normal; color: var(--chicle); font-weight: 700; min-width: 96px; text-align: right; }
+.dos-vias { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 18px; margin-top: 24px; }
+.dos-vias article { padding: 20px 22px; }
+.dos-vias h3 { margin-bottom: 8px; }
+.dos-vias p { color: var(--tinta-suave); font-size: 15.5px; }
+.mini-nota {
+  margin-top: 12px !important;
+  font-size: 12.5px !important;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chicle) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  #retrato { animation: none; }
+}
+</style>
+
+<div class="envoltorio">
+
+  <div class="hero">
+    <div>
+      <div class="bocadillo">¡Paga, perro! 🐕</div>
+      <h1>Contador de Pulgares</h1>
+      <p class="entradilla medida">
+        Un Tricount de casa: reparte los gastos del viaje, del piso y de las cañas
+        del viernes. Sin anuncios, sin tope de gastos y sin cuentas de usuario —
+        pero con un monigote rosa que se ríe de ti cuando debes dinero.
+      </p>
+      <p class="entradilla medida" style="font-size:16px">
+        Android nativo (Kotlin + Compose), todo en el móvil. Cada importe va
+        también en pesetas. <b class="gordo">43 tests</b> en verde y APK que ya se
+        instala.
+      </p>
+    </div>
+    <div class="escenario">
+      <canvas id="retrato" width="480" height="480" aria-label="El monigote de la app, bailando"></canvas>
+      <button class="dado" id="dado">🎲 Otro monigote</button>
+      <p class="pie-dado" id="cuentaDado">1 de 2.367.600.721.920</p>
+    </div>
+  </div>
+
+  <section>
+    <p class="rotulo">La app por dentro</p>
+    <h2>Tres pantallas y un botón gordo</h2>
+    <p class="sub medida">
+      Apuntar un gasto son cuatro toques. Todo lo demás — quién debe a quién, cuánto
+      y a cuántos bizums — lo calcula la app sola.
+    </p>
+
+    <div class="moviles">
+      <div>
+        <div class="movil">
+          <div class="fila">
+            <canvas class="avatarcito mono" data-mono="0,1,0,10,1,0,0,0,0,0,0" width="120" height="120" aria-hidden="true"></canvas>
+            <div class="crece">
+              <div class="titular-app">Contador de Pulgares</div>
+              <div class="dato">Sin anuncios, sin límites, sin piedad</div>
+            </div>
+          </div>
+          <div class="mini" style="background:var(--rojo-suave)">
+            <div class="gordo" style="font-size:17px">Debes 23,40 €. Respira y paga.</div>
+            <div style="margin-top:9px; display:flex; gap:7px; flex-wrap:wrap">
+              <span class="chapa" style="background:var(--rojo); color:#FFFDF8">Debes 23,40 €</span>
+              <span class="chapa" style="background:var(--verde); color:#FFFDF8">Te deben 8,15 €</span>
+            </div>
+            <div class="dato" style="margin-top:7px">O sea: debes 3.893 pts y te deben 1.356 pts, de las de antes</div>
+          </div>
+          <div class="mini fila">
+            <span class="emoji-grande">✈️</span>
+            <div class="crece">
+              <div class="gordo">Viaje a Lisboa</div>
+              <div class="dato">4 colegas · 11 gastos · 486 € (80.864 pts)</div>
+            </div>
+            <span class="chapa" style="background:var(--rojo); color:#FFFDF8">-23,40 €</span>
+          </div>
+          <div class="mini fila">
+            <span class="emoji-grande">🍻</span>
+            <div class="crece">
+              <div class="gordo">Cañas del viernes</div>
+              <div class="dato">5 colegas · 7 gastos · 92 € (15.308 pts)</div>
+            </div>
+            <span class="chapa" style="background:var(--verde); color:#FFFDF8">+8,15 €</span>
+          </div>
+          <div class="mini fila">
+            <span class="emoji-grande">🏠</span>
+            <div class="crece">
+              <div class="gordo">El piso</div>
+              <div class="dato">3 colegas · 24 gastos · 1.310 € (217.966 pts)</div>
+            </div>
+            <span class="chapa" style="background:var(--verde-suave)">En paz</span>
+          </div>
+          <div class="boton-falso">👥 Nuevo grupo</div>
+        </div>
+        <p class="movil-pie">Lo primero que ves es si debes o te deben.</p>
+      </div>
+
+      <div>
+        <div class="movil">
+          <div class="fila">
+            <div class="crece">
+              <div class="titular-app">✈️ Viaje a Lisboa</div>
+              <div class="dato">4 colegas · 486,00 € · 80.864 pts</div>
+            </div>
+          </div>
+          <div class="mini" style="background:var(--rojo-suave)">
+            <div class="gordo" style="font-size:16px">Números rojos: 23,40 €</div>
+          </div>
+          <div class="dato gordo" style="padding:0 4px">QUIÉN PAGA A QUIÉN</div>
+          <div class="mini fila" style="background:var(--rojo-suave)">
+            <span class="pareja">
+              <canvas class="avatarcito mono" data-mono="0,1,0,10,1,0,0,0,0,0,0" width="120" height="120" aria-hidden="true"></canvas>
+              →
+              <canvas class="avatarcito mono" data-mono="2,5,7,0,5,0,0,0,0,1,0" width="120" height="120" aria-hidden="true"></canvas>
+            </span>
+            <div class="crece">
+              <div class="dato">Tú debes a Ana</div>
+              <div class="gordo" style="font-size:17px">23,40 €</div>
+              <div class="dato">3.893 pts</div>
+            </div>
+            <span class="chapa" style="background:var(--verde); color:#FFFDF8">Pagar</span>
+          </div>
+          <div class="mini fila">
+            <span class="pareja">
+              <canvas class="avatarcito mono" data-mono="3,4,15,3,9,2,1,2,0,0,0" width="120" height="120" aria-hidden="true"></canvas>
+              →
+              <canvas class="avatarcito mono" data-mono="2,5,7,0,5,0,0,0,0,1,0" width="120" height="120" aria-hidden="true"></canvas>
+            </span>
+            <div class="crece">
+              <div class="dato">Luis debe a Ana</div>
+              <div class="gordo" style="font-size:17px">61,05 €</div>
+              <div class="dato">10.158 pts</div>
+            </div>
+          </div>
+          <div class="dato gordo" style="padding:8px 4px 0">SALÓN DE LA FAMA</div>
+          <div class="mini fila" style="background:var(--mostaza-suave)">
+            <canvas class="avatarcito mono" data-mono="3,4,15,3,9,2,1,2,0,0,0" width="120" height="120" aria-hidden="true"></canvas>
+            <div class="crece">
+              <div class="gordo">Rey del «mañana te lo paso»</div>
+              <div class="dato">Luis lleva 96 días debiendo 61,05 €. Un clásico.</div>
+            </div>
+            <span class="chapa" style="background:var(--chicle); color:#FFFDF8">👉</span>
+          </div>
+          <div class="mini">
+            <div class="fila">
+              <span class="emoji-grande">🍕</span>
+              <div class="crece">
+                <div class="gordo">Cena del primer día</div>
+                <div class="dato">Puso Ana · 14 ago</div>
+              </div>
+              <div style="text-align:right; flex:none">
+                <div class="gordo">93,60 €</div>
+                <div class="dato">15.574 pts</div>
+                <div class="dato">tú 23,40 €</div>
+              </div>
+            </div>
+            <div style="margin-top:9px; display:flex; gap:7px; align-items:center; flex-wrap:wrap">
+              <span class="pulgar" style="background:var(--verde-suave)">👍 3</span>
+              <span class="pulgar">👎 0</span>
+              <span class="chapa" style="background:var(--mostaza)">Aplaudido 👏</span>
+            </div>
+          </div>
+          <div class="boton-falso">💸 Apuntar gasto</div>
+        </div>
+        <p class="movil-pie">El plan de pagos es el mínimo de bizums posible.</p>
+      </div>
+
+      <div>
+        <div class="movil">
+          <div class="fila">
+            <div class="crece">
+              <div class="titular-app">Tu monigote</div>
+              <div class="dato">Hay 2 billones de combinaciones. Suerte.</div>
+            </div>
+            <span class="chapa" style="background:var(--mostaza)">🎲</span>
+          </div>
+          <div class="mini" style="display:flex; justify-content:center; padding:8px">
+            <canvas class="mono" data-mono="0,0,4,1,4,8,1,0,1,1,13" width="360" height="360"
+                    style="width:150px; height:150px" aria-label="Monigote de ejemplo con cresta"></canvas>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap">
+            <span class="chapa" style="background:var(--rosa)">Rosa chicle</span>
+            <span class="chapa" style="background:var(--mostaza-suave)">Cresta</span>
+            <span class="chapa" style="background:var(--mostaza-suave)">Gorro de fiesta</span>
+            <span class="chapa" style="background:var(--mostaza-suave)">De sol</span>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:2px">
+            <span class="chapa" style="background:var(--chicle); color:#FFFDF8">Cuerpo</span>
+            <span class="chapa">Color</span>
+            <span class="chapa">Ojos</span>
+            <span class="chapa">Boca</span>
+            <span class="chapa">Pelo</span>
+          </div>
+          <div style="display:flex; gap:9px">
+            <canvas class="mono" data-mono="0,2,11,1,2,0,0,0,9,0,7" width="200" height="200"
+                    style="width:33%; aspect-ratio:1; border:2.5px solid var(--chicle); border-radius:14px" aria-hidden="true"></canvas>
+            <canvas class="mono" data-mono="4,6,1,4,3,0,0,4,1,1,4" width="200" height="200"
+                    style="width:33%; aspect-ratio:1; border:2px solid var(--borde); border-radius:14px" aria-hidden="true"></canvas>
+            <canvas class="mono" data-mono="7,11,5,15,10,5,0,0,6,0,6" width="200" height="200"
+                    style="width:33%; aspect-ratio:1; border:2px solid var(--borde); border-radius:14px" aria-hidden="true"></canvas>
+          </div>
+          <div class="boton-falso" style="background:var(--verde)">✅ Así me quedo</div>
+        </div>
+        <p class="movil-pie">Cada miniatura se dibuja sobre <em>tu</em> monigote.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="rotulo">El creador de monigotes</p>
+    <h2>Ni una imagen: todo dibujado a mano en código</h2>
+    <p class="sub medida">
+      El avatar se pinta con curvas en un lienzo de 100×100, así que se ve igual de
+      nítido en una lista diminuta que a pantalla completa. Once piezas
+      intercambiables, y estas de aquí abajo están dibujadas ahora mismo con el
+      mismo código que va en la app.
+    </p>
+
+    <div class="cuenta pega">
+      <div><b>8</b> cuerpos</div>
+      <div><b>16</b> ojos</div>
+      <div><b>16</b> bocas</div>
+      <div><b>16</b> pelos</div>
+      <div><b>16</b> sombreros</div>
+      <div><b>16</b> cachivaches</div>
+      <div><b>12</b> gafas</div>
+      <div><b>14</b> fondos</div>
+    </div>
+
+    <h3 style="margin-top:34px">Cuerpos</h3>
+    <div class="parrilla" id="p-cuerpos"></div>
+
+    <h3 style="margin-top:30px">Ojos</h3>
+    <div class="parrilla" id="p-ojos"></div>
+
+    <h3 style="margin-top:30px">Bocas</h3>
+    <div class="parrilla" id="p-bocas"></div>
+
+    <h3 style="margin-top:30px">Pelos y sombreros</h3>
+    <div class="parrilla" id="p-tocados"></div>
+  </section>
+
+  <section>
+    <p class="rotulo">184 frases</p>
+    <h2>La app te habla como un colega, no como un banco</h2>
+    <p class="sub medida">
+      Cada momento tiene su coña, y no se repite: hay entre 8 y 26 frases por
+      situación. Estas son de verdad, están en el código.
+    </p>
+
+    <div class="frases">
+      <article class="pega bloque-frases" style="background:var(--rojo-suave)">
+        <h3>Cuando debes</h3>
+        <ul>
+          <li>¡Paga, perro! 🐕</li>
+          <li>Suelta la mosca, Luis.</li>
+          <li>Vuelva usted mañana, decías. Ya es mañana: 23,40 €.</li>
+          <li>Tu cartera ha echado telarañas.</li>
+          <li>Menos lobos, más 23,40 €.</li>
+        </ul>
+      </article>
+      <article class="pega bloque-frases" style="background:var(--verde-suave)">
+        <h3>Cuando pagas</h3>
+        <ul>
+          <li>Un Lannister siempre paga sus deudas. 🦁</li>
+          <li>El que paga descansa. Descansa, campeón.</li>
+          <li>Deuda saldada. Alguien avise a los juglares.</li>
+          <li>Has pagado antes de que te lo pidieran. ¿Estás bien?</li>
+          <li>Deuda: cero. Dignidad: intacta.</li>
+        </ul>
+      </article>
+      <article class="pega bloque-frases" style="background:var(--mostaza-suave)">
+        <h3>Cuando te deben</h3>
+        <ul>
+          <li>Te deben 61,05 €. Eres el banco del grupo.</li>
+          <li>Pagafantas nivel 61,05 €.</li>
+          <li>Sois amigos, pero 61,05 € son 61,05 €.</li>
+          <li>Cajero automático humano.</li>
+          <li>Tienes 61,05 € en la calle. Ve a por ellos.</li>
+        </ul>
+      </article>
+      <article class="pega bloque-frases">
+        <h3>Cuando alguien se eterniza</h3>
+        <ul>
+          <li>96 días. A este ritmo, la deuda cumple la mayoría de edad.</li>
+          <li>Se busca: Luis. Recompensa: 61,05 €.</li>
+          <li>Ni Hacienda es tan paciente.</li>
+          <li>Esto ya no es olvido, es carrera profesional.</li>
+        </ul>
+      </article>
+      <article class="pega bloque-frases">
+        <h3>Cuando queda todo a cero</h3>
+        <ul>
+          <li>Cuentas claras y chocolate espeso. ✅</li>
+          <li>Nadie debe nada. Momento histórico.</li>
+          <li>Todos limpios. Da miedo.</li>
+          <li>Grupo saldado. Esto hay que celebrarlo con otro gasto.</li>
+        </ul>
+      </article>
+      <article class="pega bloque-frases">
+        <h3>Al apuntar un gasto</h3>
+        <ul>
+          <li>Anotado. Que empiece el drama.</li>
+          <li>Registrado. La deuda es eterna, como el amor.</li>
+          <li>Y Ana volvió a poner la tarjeta.</li>
+          <li>Nadie escapa de la hoja de cálculo.</li>
+        </ul>
+      </article>
+    </div>
+
+    <div class="pega rangos">
+      <h3>Y un rango según lo que tardes en pagar</h3>
+      <div class="escalera">
+        <span class="chapa" style="background:var(--verde-suave)">Despistado</span>
+        <span class="flecha">→</span>
+        <span class="chapa" style="background:var(--mostaza-suave)">Manos de mantequilla</span>
+        <span class="flecha">→</span>
+        <span class="chapa" style="background:var(--mostaza-suave)">Bolsillos cosidos</span>
+        <span class="flecha">→</span>
+        <span class="chapa" style="background:var(--mostaza)">Sablista aficionado</span>
+        <span class="flecha">→</span>
+        <span class="chapa" style="background:var(--mostaza)">Moroso federado</span>
+        <span class="flecha">→</span>
+        <span class="chapa" style="background:var(--rojo-suave)">Rey del «mañana te lo paso»</span>
+        <span class="flecha">→</span>
+        <span class="chapa" style="background:var(--rojo); color:#FFFDF8">Agujero negro financiero</span>
+        <span class="flecha">→</span>
+        <span class="chapa" style="background:var(--tinta); color:var(--papel)">Moroso Patrimonio de la Humanidad</span>
+      </div>
+      <p class="sub" style="font-size:15px; margin-top:14px">
+        Al otro lado de la escala están los rangos de pagador, de <em>Turista</em> a
+        <em>Pagafantas oficial</em>, <em>Cajero automático humano</em> y
+        <em>Banco Central del grupo</em>.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <p class="rotulo">1 € = 166,386 pts</p>
+    <h2>Todo va también en pesetas</h2>
+    <p class="sub medida">
+      Con el cambio fijo de 1998, el de verdad. Aparece debajo de cada importe: en
+      el plan de pagos, en los gastos, en el total del grupo y en vivo mientras
+      escribes una cantidad. La conversión se hace con enteros (166.386 milésimas)
+      para que no se cuele ni un decimal raro.
+    </p>
+    <div class="tabla-pts pega">
+      <div><span>Una caña</span><b>2,50 €</b><i>416 pts</i></div>
+      <div><span>La cena del viaje</span><b>93,60 €</b><i>15.574 pts</i></div>
+      <div><span>Lo que debes</span><b>23,40 €</b><i>3.893 pts</i></div>
+      <div><span>El alquiler</span><b>1.000,00 €</b><i>166.386 pts</i></div>
+    </div>
+    <p class="sub medida" style="margin-top:16px">
+      Y hay tres frases que se meten con ello: «23,40 €. O 3.893 pts, si lo
+      prefieres en dinero de verdad» · «En tus tiempos eso eran 3.893 pts, y también
+      las debías».
+    </p>
+  </section>
+
+  <section>
+    <p class="rotulo">Cómo se entra a un grupo</p>
+    <h2>Ahora mismo no hay invitaciones — y conviene saberlo</h2>
+    <p class="sub medida">
+      Esta versión guarda todo en tu móvil. Los colegas de un grupo son nombres que
+      escribes tú, no cuentas de nadie: nadie más ve el grupo ni recibe nada. Es lo
+      que hace que la app no necesite servidor, registro ni tus datos — pero también
+      significa que, de momento, <b class="gordo">las cuentas las lleva una sola
+      persona</b> y el resto las consulta mirando su pantalla.
+    </p>
+    <div class="dos-vias">
+      <article class="pega">
+        <h3>Hoy: el cuaderno compartido</h3>
+        <p>
+          Uno del grupo hace de contable: apunta los gastos y los demás ven el
+          reparto cuando se lo pasa. Funciona bien para un viaje o una cena, sin
+          depender de nada ni de nadie.
+        </p>
+        <p class="mini-nota">Sin cuentas · Sin internet · Cero coste</p>
+      </article>
+      <article class="pega">
+        <h3>El plan: un código de seis letras</h3>
+        <p>
+          Creas el grupo y sale un código tipo <code>PAGA-42</code>. Se lo mandas por
+          WhatsApp, el otro lo teclea en su app y desde ese momento los dos móviles
+          ven los mismos gastos. Sin registro y sin correo: el código <em>es</em> la
+          invitación, como en un Kahoot.
+        </p>
+        <p class="mini-nota">
+          Backend en tu cuenta personal de AWS · Nada tocado todavía
+        </p>
+      </article>
+    </div>
+    <p class="sub medida" style="margin-top:18px">
+      Ese mismo paso es el que desbloquea el botón 👉 de dar un toque: hoy el aviso
+      se queda en tu móvil, y con la sincronización le llega la notificación al
+      moroso — con su frase correspondiente, claro.
+    </p>
+  </section>
+
+  <section>
+    <p class="rotulo">Por debajo</p>
+    <h2>Las cuentas cuadran al céntimo</h2>
+
+    <div class="tripas">
+      <article class="pega">
+        <h3>Nunca un decimal</h3>
+        <p>
+          Todo el dinero son céntimos en <code>Long</code>. Con decimales,
+          0,10 + 0,20 no da 0,30 y las cuentas acaban con un descuadre que nadie
+          sabe explicar. Al partir 10 € entre tres sale 3,34 + 3,33 + 3,33, y el
+          céntimo que sobra rota de gasto en gasto para que no le caiga siempre al
+          mismo pringado.
+        </p>
+      </article>
+      <article class="pega">
+        <h3>El mínimo de bizums</h3>
+        <p>
+          Se empareja al que más debe con el que más se le debe, y se repite. Deja
+          como máximo un pago menos que personas, y rompe los triángulos: si Ana
+          paga lo tuyo y tú pagas lo de Luis por igual importe, Luis le paga
+          directamente a Ana y tú te quedas al margen.
+        </p>
+      </article>
+      <article class="pega">
+        <h3>Tres formas de repartir</h3>
+        <p>
+          <b class="gordo">A escote</b> entre los que marques.
+          <b class="gordo">Por partes</b>, para el que repitió postre.
+          <b class="gordo">A dedo</b>, cada uno su importe exacto — y si no suma el
+          total, la app te dice cuánto falta y no te deja guardar.
+        </p>
+      </article>
+      <article class="pega">
+        <h3>Los pulgares</h3>
+        <p>
+          Cada gasto se vota 👍 o 👎. Los muy aplaudidos se llevan medalla
+          («Gasto del año 🏆») y los muy criticados también («Crimen contra el
+          grupo 💀»). De ahí el nombre de la app.
+        </p>
+      </article>
+    </div>
+
+    <div class="pega pendiente">
+      <h3>Lo que falta</h3>
+      <ul>
+        <li>
+          <b class="gordo">Compartir grupo entre móviles.</b> Ahora cada móvil lleva
+          sus cuentas. El backend va en tu cuenta personal de AWS, en el mismo API
+          Gateway que ya sirve a las otras apps de casa — nada tocado todavía.
+        </li>
+        <li>
+          <b class="gordo">El toque de verdad.</b> El botón 👉 ya existe, pero el
+          aviso se queda en tu móvil: para que le vibre al moroso hace falta el paso
+          anterior.
+        </li>
+        <li>Confeti al dejar un grupo a cero, exportar a CSV y gastos recurrentes.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Contador de Pulgares · Kotlin + Jetpack Compose · repo
+    <code>Landinencio/Contador-de-Pulgares</code><br>
+    Tipografías Fredoka y Baloo 2 (licencia OFL). El monigote, de tu escritorio.<br>Cambio oficial 1 € = 166,386 pts, el de 1998.
+  </footer>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// El monigote, portado del Kotlin de la app (avatar/Pincel.kt y compañía).
+// Espacio virtual 0..100, igual que allí.
+// ---------------------------------------------------------------------------
+const CX = 50, CIMA = 20, SUELO = 74, OJOS_Y = 39, SEP = 11.5, BOCA_Y = 55, PIES_Y = 93;
+const OI = CX - SEP, OD = CX + SEP;
+const T = '#17161A', BL = '#FFFDF8', ROSA = '#FF7BA8', ROJA = '#E8443C',
+      AMA = '#FFC53D', AZU = '#4C9BE8', GRI = '#8B8794', VER = '#3EBB7C',
+      MAR = '#8A5A33', DOR = '#E8B424', CAR = '#FFD9C0', NAR = '#FF8A3D', MOR = '#9E7DE8';
+
+const PIELES = [
+  ['#FF9EC0','#E77BA2'], ['#F3C2CD','#DFA6B4'], ['#A8D84E','#86B62F'], ['#7FC4FF','#5AA5E8'],
+  ['#FFD84D','#E8BC2A'], ['#BFA0FF','#9E7DE8'], ['#FF9C5B','#E87B38'], ['#C99060','#A87343'],
+  ['#B9BFC4','#98A0A6'], ['#FBF7F0','#DCD5C9'], ['#FF6F63','#E04A3E'], ['#57D6C9','#33B5A8'],
+  ['#4A4550','#332F38'], ['#F0C33C','#D1A21C']
+];
+const SIL = [
+  [21,23,20,CIMA,SUELO,0], [24,26.5,24,22,SUELO,0], [16,22,24,CIMA,SUELO,0],
+  [14,19,27,CIMA,SUELO,0], [25,27,25,28,SUELO,0], [14.5,15.5,14,15,SUELO,0],
+  [25,26,25,23,71,0], [17,22,28,CIMA,SUELO,1]
+];
+const NOM = {
+  cuerpos: ['Alubia','Patata','Huevo','Pera','Croqueta','Churro','Bola','Flan'],
+  ojos: ['Normales','Saltones','Bizcos','Dormido','Enamorado','Signos de euro','Espiral','Guiño',
+         'Enfadado','Con ojeras','Rayos láser','Estrellitas','Fulminado','Robot','Llorón','Entrecerrados'],
+  bocas: ['Sonrisa','Sonrisota','Dientes','Mueca','Lengua fuera','Silbando','Colmillos','Grito',
+          'Beso','Cremallera','Sin boca','Chupete','Babeando','Torcida','Ohhh','Rechinando']
+};
+
+function pincel(g, lado) {
+  const k = lado / 100;
+  const S = { g };
+  S.tz = (w, c) => { g.lineWidth = w * k; g.strokeStyle = c || T; g.lineCap = 'round'; g.lineJoin = 'round'; };
+  S.linea = (x1,y1,x2,y2,c,w) => { S.tz(w||3.2,c); g.beginPath(); g.moveTo(x1*k,y1*k); g.lineTo(x2*k,y2*k); g.stroke(); };
+  S.circ = (x,y,r,c) => { g.fillStyle=c; g.beginPath(); g.arc(x*k,y*k,r*k,0,7); g.fill(); };
+  S.circC = (x,y,r,c,w) => { S.tz(w||3.2,c); g.beginPath(); g.arc(x*k,y*k,r*k,0,7); g.stroke(); };
+  S.ov = (x,y,rx,ry,c) => { g.fillStyle=c; g.beginPath(); g.ellipse(x*k,y*k,rx*k,ry*k,0,0,7); g.fill(); };
+  S.ovC = (x,y,rx,ry,c,w) => { S.tz(w||3.2,c); g.beginPath(); g.ellipse(x*k,y*k,rx*k,ry*k,0,0,7); g.stroke(); };
+  S.arco = (x,y,rx,ry,d,b,c,w) => { S.tz(w||3.2,c); g.beginPath();
+    g.ellipse(x*k,y*k,rx*k,ry*k,0,d*Math.PI/180,(d+b)*Math.PI/180); g.stroke(); };
+  S.caja = (x,y,an,al,r,c,soloB,w) => { g.beginPath();
+    g.roundRect((x-an/2)*k,(y-al/2)*k,an*k,al*k,r*k);
+    if (soloB) { S.tz(w||3.2,c); g.stroke(); } else { g.fillStyle=c; g.fill(); } };
+  S.pol = (pts,c,borde,w) => { g.beginPath(); g.moveTo(pts[0][0]*k,pts[0][1]*k);
+    pts.slice(1).forEach(p=>g.lineTo(p[0]*k,p[1]*k)); g.closePath(); g.fillStyle=c; g.fill();
+    if (borde !== null) { S.tz(w||1.6,borde||T); g.stroke(); } };
+  S.cam = (trazar) => { g.beginPath(); trazar({
+      m:(x,y)=>g.moveTo(x*k,y*k), l:(x,y)=>g.lineTo(x*k,y*k),
+      q:(cx,cy,x,y)=>g.quadraticCurveTo(cx*k,cy*k,x*k,y*k),
+      c:(ax,ay,bx,by,x,y)=>g.bezierCurveTo(ax*k,ay*k,bx*k,by*k,x*k,y*k),
+      z:()=>g.closePath() }); };
+  S.pieza = (trazar,relleno,w) => { S.cam(trazar); g.fillStyle=relleno; g.fill(); S.tz(w||3.2); g.stroke(); };
+  S.tubo = (trazar,relleno,gr) => { S.cam(trazar); S.tz(gr+2.8,T); g.stroke(); S.tz(gr,relleno); g.stroke(); };
+  S.girado = (grados,x,y,f) => { g.save(); g.translate(x*k,y*k); g.rotate(grados*Math.PI/180); g.translate(-x*k,-y*k); f(); g.restore(); };
+  S.k = k;
+  return S;
+}
+
+function corazon(S,x,y,t,c) { S.pieza(p=>{ p.m(x,y+t*0.85);
+  p.c(x-t*1.35,y+t*0.05,x-t*0.7,y-t*1.05,x,y-t*0.28);
+  p.c(x+t*0.7,y-t*1.05,x+t*1.35,y+t*0.05,x,y+t*0.85); p.z(); }, c, 1.8); }
+function estrella(S,x,y,t,c) { const p=[]; for(let i=0;i<10;i++){ const r=i%2?t*0.45:t;
+  const a=(i*36-90)*Math.PI/180; p.push([x+r*Math.cos(a), y+r*Math.sin(a)]); } S.pol(p,c,T,1.4); }
+function euro(S,x,y,t,c) { S.arco(x+t*0.15,y,t*0.85,t,40,280,c,t*0.32);
+  S.linea(x-t*0.9,y-t*0.28,x+t*0.55,y-t*0.28,c,t*0.26);
+  S.linea(x-t*0.9,y+t*0.28,x+t*0.55,y+t*0.28,c,t*0.26); }
+function espiral(S,x,y,radio) { let r=radio,a=0; while(r>0.9){ S.arco(x,y,r,r,a,170,T,1.6); a+=170; r-=radio*0.17; } }
+
+function cuerpo(S, forma, apl) {
+  const s = SIL[forma % SIL.length];
+  const cima = s[3]+apl*3, base = s[4], medio = (cima+base)/2, e = 1+apl*0.06;
+  const wA = s[0]*e, wM = s[1]*e, wB = s[2]*e;
+  return p => {
+    p.m(CX, cima);
+    p.c(CX+wA*1.05, cima, CX+wM, cima+(medio-cima)*0.45, CX+wM, medio);
+    if (s[5]) {
+      p.c(CX+wM, medio+(base-medio)*0.6, CX+wB, base-6, CX+wB, base-1.5);
+      p.q(CX+wB, base, CX+wB-3, base); p.l(CX-wB+3, base);
+      p.q(CX-wB, base, CX-wB, base-1.5);
+      p.c(CX-wB, base-6, CX-wM, medio+(base-medio)*0.6, CX-wM, medio);
+    } else {
+      p.c(CX+wM, medio+(base-medio)*0.55, CX+wB*1.02, base-(base-medio)*0.12, CX+wB*0.72, base);
+      p.c(CX+wB*0.3, base+2.6, CX-wB*0.3, base+2.6, CX-wB*0.72, base);
+      p.c(CX-wB*1.02, base-(base-medio)*0.12, CX-wM, medio+(base-medio)*0.55, CX-wM, medio);
+    }
+    p.c(CX-wM, cima+(medio-cima)*0.45, CX-wA*1.05, cima, CX, cima); p.z();
+  };
+}
+
+function ojoBase(S,x,rx,ry) { rx=rx||7; ry=ry||8;
+  S.ov(x,OJOS_Y,rx,ry,T); S.ov(x+rx*0.32,OJOS_Y-ry*0.38,rx*0.28,ry*0.26,BL); }
+
+function ojos(S,i) {
+  const y = OJOS_Y;
+  switch(i) {
+    case 0: ojoBase(S,OI); ojoBase(S,OD); break;
+    case 1: [[OI,-1],[OD,1]].forEach(([x,l])=>{ S.ov(x,y,8.5,9,BL); S.ovC(x,y,8.5,9,T,2.8); S.circ(x+2.2*l,y-1,3.6,T); }); break;
+    case 2: S.ov(OI,y,8,8.5,BL); S.ovC(OI,y,8,8.5,T,2.8); S.circ(OI+3.5,y,3.2,T);
+            S.ov(OD,y,8,8.5,BL); S.ovC(OD,y,8,8.5,T,2.8); S.circ(OD-3.5,y,3.2,T); break;
+    case 3: S.arco(OI,y-1,7,6,20,140,T,3); S.arco(OD,y-1,7,6,20,140,T,3);
+            S.linea(OI-8,y-4,OI-10.5,y-6,T,2); S.linea(OD+8,y-4,OD+10.5,y-6,T,2); break;
+    case 4: corazon(S,OI,y,7.5,ROJA); corazon(S,OD,y,7.5,ROJA); break;
+    case 5: euro(S,OI,y,7,VER); euro(S,OD,y,7,VER); break;
+    case 6: [OI,OD].forEach(x=>{ S.ov(x,y,8,8.5,BL); S.ovC(x,y,8,8.5,T,2.6); espiral(S,x,y,6.5); }); break;
+    case 7: ojoBase(S,OI); S.arco(OD,y,7,5.5,190,160,T,3.2); break;
+    case 8: ojoBase(S,OI,7,7); ojoBase(S,OD,7,7);
+            S.linea(OI-8,y-12,OI+6,y-8,T,3.6); S.linea(OD+8,y-12,OD-6,y-8,T,3.6); break;
+    case 9: ojoBase(S,OI,7,6.5); ojoBase(S,OD,7,6.5);
+            S.arco(OI,y+5,6.5,4,10,160,GRI,2.2); S.arco(OD,y+5,6.5,4,10,160,GRI,2.2); break;
+    case 10: [OI,OD].forEach(x=>{ S.ov(x,y,7,5,ROJA); S.ovC(x,y,7,5,T,2.4); S.ov(x,y,3,2,BL); });
+             S.pol([[OI-6,y+2],[OI-2,y+30],[OI+4,y+2]],'rgba(232,68,60,.45)',null);
+             S.pol([[OD-4,y+2],[OD+2,y+30],[OD+6,y+2]],'rgba(232,68,60,.45)',null); break;
+    case 11: estrella(S,OI,y,8,AMA); estrella(S,OD,y,8,AMA); break;
+    case 12: [OI,OD].forEach(x=>{ S.linea(x-5.5,y-5.5,x+5.5,y+5.5,T,3.4); S.linea(x+5.5,y-5.5,x-5.5,y+5.5,T,3.4); }); break;
+    case 13: S.caja(CX,y,38,13,6,T); S.caja(CX,y,38,13,6,T,true,2.6);
+             S.circ(OI,y,3.2,ROJA); S.circ(OD,y,3.2,AZU); break;
+    case 14: S.arco(OI,y,7,6,200,140,T,3.2); S.arco(OD,y,7,6,200,140,T,3.2);
+             [OI,OD].forEach(x=>{ S.pieza(p=>{ p.m(x,y+3); p.q(x-4,y+10,x,y+15); p.q(x+4,y+10,x,y+3); p.z(); },'rgba(76,155,232,.85)',2); }); break;
+    case 15: [OI,OD].forEach(x=>{ S.ov(x,y,7.5,4,BL); S.ovC(x,y,7.5,4,T,2.6); S.circ(x,y,2.8,T); }); break;
+  }
+}
+
+function boca(S,i) {
+  const y = BOCA_Y, cx = CX;
+  switch(i) {
+    case 0: S.arco(cx,y-3,9,7,20,140,T,3); break;
+    case 1: S.pieza(p=>{ p.m(cx-10,y-3); p.q(cx,y+11,cx+10,y-3); p.q(cx,y-1,cx-10,y-3); p.z(); },T,2.4); break;
+    case 2: S.pieza(p=>{ p.m(cx-10,y-3); p.q(cx,y+10,cx+10,y-3); p.z(); },T,2.4);
+            S.caja(cx,y-1.5,15,3.6,1.2,BL);
+            S.linea(cx-3.5,y-3.3,cx-3.5,y+0.3,GRI,1.2); S.linea(cx+3.5,y-3.3,cx+3.5,y+0.3,GRI,1.2); break;
+    case 3: S.cam(p=>{ p.m(cx-9,y+1); p.q(cx-3,y-4,cx,y+1); p.q(cx+4,y+5,cx+9,y-2); }); S.tz(3); S.g.stroke(); break;
+    case 4: S.arco(cx,y-3,9,7,20,140,T,3);
+            S.pieza(p=>{ p.m(cx-4,y+2.5); p.q(cx-5,y+11,cx+1,y+10.5); p.q(cx+5,y+10,cx+4,y+2.5); p.z(); },ROSA,2.2); break;
+    case 5: S.circ(cx+2,y+1,4.2,T); S.arco(cx-9,y-4,5,4,200,120,T,2.2); break;
+    case 6: S.pieza(p=>{ p.m(cx-10,y-3); p.q(cx,y+9,cx+10,y-3); p.z(); },T,2.4);
+            S.pol([[cx-6,y-2],[cx-3.5,y-2],[cx-4.7,y+4.5]],BL,T,1.4);
+            S.pol([[cx+3.5,y-2],[cx+6,y-2],[cx+4.7,y+4.5]],BL,T,1.4); break;
+    case 7: S.ov(cx,y+2,7,9,T); S.ovC(cx,y+2,7,9,T,2.6); S.ov(cx,y+8,3.5,3,ROSA); break;
+    case 8: corazon(S,cx,y+1,6,ROJA); break;
+    case 9: S.linea(cx-11,y,cx+11,y,T,3);
+            for(let j=0;j<=5;j++){ const x=cx-9+j*3.6; S.linea(x,y-2.6,x,y+2.6,T,1.6); }
+            S.caja(cx+12.5,y,5,6,1.5,GRI); S.caja(cx+12.5,y,5,6,1.5,T,true,1.8); break;
+    case 10: break;
+    case 11: S.circ(cx,y+3,5.5,ROSA); S.circC(cx,y+3,5.5,T,2.6);
+             S.caja(cx,y-2.5,7,4,2,AMA); S.caja(cx,y-2.5,7,4,2,T,true,1.8); break;
+    case 12: S.arco(cx,y-3,9,7,20,140,T,3);
+             S.pieza(p=>{ p.m(cx+5,y+3); p.q(cx+4,y+12,cx+7,y+13); p.q(cx+9,y+11,cx+8,y+3); p.z(); },'rgba(76,155,232,.7)',1.8); break;
+    case 13: S.cam(p=>{ p.m(cx-9,y+2); p.q(cx,y+8,cx+10,y-4); }); S.tz(3.2); S.g.stroke(); break;
+    case 14: S.circ(cx,y+1,5.5,T); S.circ(cx,y+2.5,2.2,ROSA); break;
+    case 15: S.caja(cx,y,20,9,2,T); S.caja(cx,y,18,7,1.5,BL);
+             for(let j=0;j<=4;j++){ const x=cx-7.2+j*3.6; S.linea(x,y-3.5,x,y+3.5,GRI,1.2); }
+             S.linea(cx-9,y,cx+9,y,GRI,1.2); break;
+  }
+}
+
+function pelo(S,i,pielIdx) {
+  const C = CIMA, pl = pielIdx === 12 ? '#EDE7F2' : T;
+  switch(i) {
+    case 1: S.linea(CX-4,C+1,CX-6,C-8,pl,2.4); S.linea(CX,C-0.5,CX,C-10,pl,2.4); S.linea(CX+4,C+1,CX+6,C-8,pl,2.4); break;
+    case 2: S.pieza(p=>{ p.m(CX-20,C+6); p.c(CX-18,C-8,CX+4,C-14,CX+16,C-6);
+              p.c(CX+10,C-4,CX+4,C-2,CX+20,C+5); p.c(CX+6,C-1,CX-8,C-1,CX-20,C+6); p.z(); },pl,2); break;
+    case 3: [[CX-16,C-4],[CX-8,C-11],[CX+2,C-13],[CX+12,C-9],[CX+18,C-1],[CX-20,C+4],[CX+21,C+6]]
+              .forEach(([x,y])=>S.circ(x,y,9,pl));
+            [[CX-16,C-4],[CX-8,C-11],[CX+2,C-13],[CX+12,C-9],[CX+18,C-1]].forEach(([x,y])=>S.circC(x,y,9,T,1.6)); break;
+    case 4: S.pol([[CX-14,C+4],[CX-9,C-14],[CX-5,C-2],[CX-1,C-18],[CX+4,C-2],[CX+8,C-13],[CX+13,C+4]],ROSA,T,2); break;
+    case 5: S.circ(CX,C-9,8,pl); S.circC(CX,C-9,8,T,2.2);
+            S.pieza(p=>{ p.m(CX-18,C+5); p.c(CX-14,C-6,CX+14,C-6,CX+18,C+5);
+              p.c(CX+8,C+1,CX-8,C+1,CX-18,C+5); p.z(); },pl,2); break;
+    case 7: [[CX-17,C+1],[CX-10,C-6],[CX-2,C-9],[CX+7,C-6],[CX+15,C+1]].forEach(([x,y])=>{ S.circ(x,y,7,pl); S.circC(x,y,7,T,1.8); });
+            [[CX-20,C+8],[CX+19,C+8]].forEach(([x,y])=>{ S.circ(x,y,5.5,pl); S.circC(x,y,5.5,T,1.6); }); break;
+    case 10: S.pieza(p=>{ p.m(CX-20,C+6); p.c(CX-17,C-9,CX+17,C-9,CX+20,C+6);
+               p.c(CX+8,C+2,CX-8,C+2,CX-20,C+6); p.z(); },pl,2);
+             [-19,-13,13,19].forEach((dx,j)=>{ const largo = j%2 ? 20 : 26;
+               S.caja(CX+dx,C+4+largo/2,5,largo,2.5,pl); S.circ(CX+dx,C+4+largo,3,AMA); S.circC(CX+dx,C+4+largo,3,T,1.4); }); break;
+    case 14: for(let j=0;j<=6;j++){ const x=CX-18+j*6, alto = j%2 ? 9 : 13;
+               S.pol([[x-3,C+4],[x,C+4-alto],[x+3,C+4]],pl,T,1.6); } break;
+  }
+}
+
+function tocado(S,i) {
+  const C = CIMA;
+  switch(i) {
+    case 1: S.pieza(p=>{ p.m(CX-21,C+4); p.c(CX-22,C-8,CX+20,C-10,CX+21,C+3);
+              p.c(CX+10,C+7,CX-10,C+7,CX-21,C+4); p.z(); },'rgba(23,22,26,.92)',2.2); S.circ(CX+1,C-9,2.4,T); break;
+    case 2: S.pieza(p=>{ p.m(CX-19,C+3); p.c(CX-19,C-12,CX+19,C-12,CX+19,C+3); p.z(); },ROJA,2.2);
+            S.pieza(p=>{ p.m(CX+17,C+2); p.c(CX+34,C+1,CX+36,C+8,CX+32,C+9);
+              p.c(CX+26,C+6,CX+22,C+6,CX+17,C+6); p.z(); },ROJA,2.2); S.circ(CX,C-11,2.2,BL); break;
+    case 5: S.pol([[CX-17,C+3],[CX-20,C-14],[CX-9,C-5],[CX,C-17],[CX+9,C-5],[CX+20,C-14],[CX+17,C+3]],DOR,T,2.4);
+            S.circ(CX,C-2,2.4,ROJA); S.circ(CX-11,C-1,1.8,AZU); S.circ(CX+11,C-1,1.8,VER); break;
+    case 6: S.pieza(p=>{ p.m(CX-22,C+4); p.c(CX-20,C-14,CX+20,C-14,CX+22,C+4); p.z(); },AMA,2.4);
+            S.ov(CX,C+4,26,3.6,AMA); S.ovC(CX,C+4,26,3.6,T,2);
+            S.linea(CX,C-12,CX,C+2,'rgba(23,22,26,.5)',2); break;
+    case 7: S.pieza(p=>{ p.m(CX-13,C+3); p.l(CX-3,C-22); p.l(CX+3,C-22); p.l(CX+13,C+3); p.z(); },NAR,2.4);
+            S.caja(CX,C-9,17,5,1,BL); S.caja(CX,C+4,30,5,1.5,NAR); S.caja(CX,C+4,30,5,1.5,T,true,2); break;
+    case 8: S.pieza(p=>{ p.m(CX-12,C+3); p.l(CX+2,C-24); p.l(CX+13,C+1); p.z(); },ROSA,2.2);
+            S.linea(CX-7,C-4,CX+8,C-7,AMA,2.6); S.linea(CX-3,C-13,CX+6,C-15,AZU,2.2);
+            S.circ(CX+2,C-26,3.4,AMA); S.circC(CX+2,C-26,3.4,T,1.6); break;
+    case 9: S.ovC(CX,C-13,15,4.5,DOR,3.2); S.ovC(CX,C-13,15,4.5,'rgba(255,197,61,.5)',5.5); break;
+    case 10: [-1,1].forEach(l=>{ S.pieza(p=>{ p.m(CX+l*12,C+2);
+               p.c(CX+l*20,C-4,CX+l*19,C-13,CX+l*14,C-15);
+               p.c(CX+l*15,C-8,CX+l*12,C-3,CX+l*8,C+1); p.z(); },ROJA,2); }); break;
+    case 11: S.circ(CX,C-3,15,GRI); S.circC(CX,C-3,15,T,2.6); S.circ(CX,C-3,11,'rgba(23,22,26,.75)');
+             S.caja(CX+26,C-3,24,5,2.5,T); break;
+    case 13: S.ov(CX,C,24,7,'rgba(23,22,26,.9)'); S.ovC(CX,C,24,7,T,2.2);
+             S.ov(CX,C-4,17,6,'rgba(23,22,26,.9)'); S.ovC(CX,C-4,17,6,T,2.2); break;
+  }
+}
+
+function gafas(S,i) {
+  const y = OJOS_Y;
+  switch(i) {
+    case 1: S.caja(OI,y,20,15,5,T); S.caja(OD,y,20,15,5,T);
+            S.linea(OI+10,y-2,OD-10,y-2,T,2.6); S.linea(OI-10,y-1,24,y-3,T,2.4); S.linea(OD+10,y-1,76,y-3,T,2.4);
+            S.linea(OI-5,y+4,OI+2,y-4,'rgba(255,253,248,.5)',2); break;
+    case 3: [OI,OD].forEach(x=>{ S.circ(x,y,10,'rgba(255,253,248,.35)'); S.circC(x,y,10,T,3.2);
+              S.circC(x,y,6.5,'rgba(255,253,248,.6)',1.6); }); S.linea(OI+10,y,OD-10,y,T,2.8); break;
+    case 6: S.circC(OD,y,9.5,T,3); S.circ(OD,y,9.5,'rgba(255,253,248,.28)'); S.linea(OD+8,y+6,OD+11,y+18,T,1.8); break;
+  }
+}
+
+function cachivache(S,i) {
+  const MX = 17, MY = 71;
+  switch(i) {
+    case 1: S.caja(MX,MY,15,18,3,AMA); S.caja(MX,MY,15,18,3,T,true,2.4);
+            [[MX-4,MY-9],[MX,MY-11],[MX+4,MY-9]].forEach(([x,y])=>{ S.circ(x,y,3.6,BL); S.circC(x,y,3.6,T,1.6); });
+            S.arco(MX+9,MY+1,5,5,300,120,T,2.4); break;
+    case 2: S.girado(-18,MX,MY,()=>{ S.caja(MX,MY+2,7,22,3.5,MAR); S.caja(MX,MY+2,7,22,3.5,T,true,2.2);
+              S.linea(MX-1.5,MY-6,MX-1.5,MY+10,'rgba(23,22,26,.35)',1.2);
+              S.linea(MX+1.5,MY-6,MX+1.5,MY+10,'rgba(23,22,26,.35)',1.2); }); break;
+    case 6: S.caja(MX,MY,17,22,2.5,GRI); S.caja(MX,MY,17,22,2.5,T,true,2.2);
+            S.caja(MX,MY-6.5,12,5,1,'rgba(62,187,124,.8)');
+            for(let f=0;f<3;f++) for(let c=0;c<3;c++) S.circ(MX-4+c*4,MY+1+f*4.5,1.4,T); break;
+    case 9: S.girado(-12,MX,MY,()=>{ S.pieza(p=>{ p.m(MX-8,MY+10); p.l(MX-8,MY-2);
+              p.c(MX-9,MY-12,MX-1,MY-14,MX-1,MY-5); p.q(MX+9,MY-6,MX+8,MY+2);
+              p.l(MX+8,MY+10); p.z(); },AMA,2.4); }); break;
+    case 10: S.pieza(p=>{ p.m(MX-12,MY-4); p.l(MX+12,MY-6); p.q(MX+14,MY+6,MX+11,MY+7);
+               p.l(MX-11,MY+8); p.z(); },MAR,2.4);
+             S.linea(MX-6,MY-5,MX+6,MY-6,'rgba(23,22,26,.4)',1.6);
+             S.circ(MX+4,MY-14,2.2,GRI); S.linea(MX+2,MY-16,MX+6,MY-12,GRI,1.4);
+             S.linea(MX+6,MY-16,MX+2,MY-12,GRI,1.4); break;
+    case 11: S.pieza(p=>{ p.m(MX-6,MY+12); p.l(MX-6,MY-4); p.q(MX-5,MY-10,MX-2.5,MY-12);
+               p.l(MX-2.5,MY-18); p.l(MX+2.5,MY-18); p.l(MX+2.5,MY-12);
+               p.q(MX+5,MY-10,MX+6,MY-4); p.l(MX+6,MY+12); p.z(); },'rgba(62,187,124,.75)',2.2);
+             S.caja(MX,MY-19,6,3,1,DOR); S.caja(MX,MY+3,12,7,1,'rgba(255,253,248,.85)'); break;
+  }
+}
+
+function fondo(S,i) {
+  const bases = ['#FFD9E6','#F7EEDD','#D6EBFF','#D8F3DE','#FFE9C7','#E7DDFF','#2B2540',
+                 '#FFF3CC','#D9F5EF','#F7F1E4','#1F2B45','#FFCBA8','#EDEDED','#FFE0EC'];
+  S.caja(50,50,200,200,0,bases[i] || bases[13]);
+  const tr = (i===6||i===10) ? 'rgba(255,253,248,.35)' : 'rgba(23,22,26,.12)';
+  if (i===4) { for(let f=0;f<6;f++) for(let c=0;c<6;c++) S.circ(c*18+(f%2?9:0), f*18+4, 3.4, tr); }
+  else if (i===5) { for(let j=-3;j<=10;j++) S.linea(j*14,0,j*14+60,100,tr,5); }
+  else if (i===6) { [[12,15],[30,8],[48,20],[70,10],[88,22],[20,40],[82,45],[8,62],[92,70],[16,88],[60,92]]
+      .forEach(([x,y],j)=>estrella(S,x,y,j%3?2.2:3.4,'rgba(255,197,61,.85)')); }
+  else if (i===7) { [[10,18],[26,8],[44,24],[66,12],[86,20],[14,46],[88,52],[6,74],[94,80],[22,90]]
+      .forEach(([x,y])=>{ S.circ(x,y,5,'rgba(232,180,36,.65)'); S.circC(x,y,5,'rgba(23,22,26,.2)',1.4); euro(S,x,y,2.4,'rgba(23,22,26,.25)'); }); }
+  else if (i===13) { [[10,14],[28,6],[46,18],[68,8],[88,16],[18,38],[80,42],[6,60],[94,66],[24,84],[58,90],[40,70]]
+      .forEach(([x,y],j)=>{ const c=[ROSA,AMA,AZU,VER,MOR][j%5]; S.girado(j*37,x,y,()=>S.caja(x,y,7,3.4,1.4,c)); }); }
+  else if (i===12) { for(let j=0;j<=9;j++){ S.linea(j*11,0,j*11,100,tr,1.4); S.linea(0,j*11,100,j*11,tr,1.4); } }
+  else if (i===11) { S.caja(50,20,200,40,0,'#FFB088'); S.caja(50,52,200,26,0,'#FF8FA8');
+                     S.caja(50,78,200,30,0,'#FFC9A0'); S.circ(50,46,16,'#FFE08A'); }
+  else if (i===9) { S.arco(16,18,8,8,200,220,tr,2.6); estrella(S,80,16,5,tr); corazon(S,88,76,5,tr);
+                    S.circC(14,80,6,tr,2.6); S.linea(64,88,76,92,tr,2.6); euro(S,50,12,5,tr); }
+}
+
+/** m = [forma,color,ojos,boca,pelo,tocado,gafas,barba,cachivache,marca,fondo] */
+function dibuja(ctx, lado, m, conFondo, fase) {
+  ctx.clearRect(0, 0, lado, lado);
+  const S = pincel(ctx, lado);
+  const [piel, sombra] = PIELES[m[1] % PIELES.length];
+
+  if (conFondo) fondo(S, m[10]);
+
+  const f = (fase || 0) * 2 * Math.PI;
+  const mueve = fase !== undefined && fase !== null;
+  const paso = mueve ? Math.sin(f) : 0;
+  const apl = mueve ? ((Math.sin(f*2)+1)/2)*0.6 : 0;
+  const saludo = mueve ? (Math.sin(f*1.5)+1)/2 : 0;
+
+  S.ov(CX, PIES_Y+3.5, 24, 4.2, 'rgba(23,22,26,.15)');
+  S.girado(paso*2.5, CX, PIES_Y, () => {
+    // patas
+    const base = SUELO-3, pies = PIES_Y-2, cI = 3.5*paso, cD = -2.5*paso;
+    S.tubo(p=>{ p.m(43,base); p.c(42,base+8,41+cI,pies-6,40.5+cI*1.6,pies); }, piel, 7.5);
+    S.ov(36+cI*1.6, pies+1.5, 6.5, 4, T); S.ov(36+cI*1.6, pies+1.2, 5.2, 2.9, piel);
+    S.tubo(p=>{ p.m(57,base); p.c(58,base+8,60+cD,pies-6,61+cD,pies); }, piel, 7.5);
+    S.ov(65+cD, pies+1.5, 6.5, 4, T); S.ov(65+cD, pies+1.2, 5.2, 2.9, piel);
+    // brazos
+    const mdY = 31 - saludo*4, mdX = 82 + saludo*2;
+    S.tubo(p=>{ p.m(67,46); p.c(75,43,79,36,mdX,mdY); }, piel, 7);
+    S.circ(mdX, mdY-0.5, 6, T); S.circ(mdX, mdY-0.5, 4.6, piel);
+    S.tubo(p=>{ p.m(33,47); p.c(25,51,20,57,19,64); }, piel, 7);
+    S.circ(18.5, 65.5, 6, T); S.circ(18.5, 65.5, 4.6, piel);
+    // cuerpo
+    const trazo = cuerpo(S, m[0], apl);
+    S.pieza(trazo, piel);
+    S.g.save(); S.cam(trazo); S.g.clip();
+    S.pieza(p=>{ p.m(28,30); p.c(24,45,26,62,34,74); p.c(30,74,27,70,26,62); p.c(25,50,26,38,28,30); p.z(); },
+            sombra + '8c', 0.1);
+    S.g.restore();
+    S.ov(41,27,5.5,3.2,'rgba(255,253,248,.5)');
+    S.cam(trazo); S.tz(3.2); S.g.stroke();
+    // cara y complementos
+    ojos(S, m[2]); boca(S, m[3]); gafas(S, m[6]);
+    pelo(S, m[4], m[1]); tocado(S, m[5]); cachivache(S, m[8]);
+  });
+}
+
+// ---- el monigote grande, bailando ----
+const retrato = document.getElementById('retrato');
+const ctxRetrato = retrato.getContext('2d');
+let actual = [0, 1, 0, 10, 0, 0, 0, 0, 0, 0, 0];
+const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function pinta(t) {
+  const fase = quieto ? 0 : (t % 1400) / 1400;
+  dibuja(ctxRetrato, 480, actual, false, fase);
+  requestAnimationFrame(pinta);
+}
+requestAnimationFrame(pinta);
+
+const TOPES = [8, 14, 16, 16, 16, 16, 12, 10, 16, 12, 14];
+document.getElementById('dado').addEventListener('click', () => {
+  actual = TOPES.map((tope, i) => {
+    // Los "nada" salen más a menudo, como en la app.
+    if ([4, 5, 6, 7, 8, 9].includes(i) && Math.random() < 0.35) return 0;
+    return Math.floor(Math.random() * tope);
+  });
+  document.getElementById('cuentaDado').textContent =
+    'Uno de 2.367.600.721.920';
+});
+
+// ---- los monigotes de las maquetas ----
+document.querySelectorAll('canvas.mono').forEach(c => {
+  const m = c.dataset.mono.split(',').map(Number);
+  dibuja(c.getContext('2d'), c.width, m, m[10] !== 0 || c.closest('.mini') === null ? true : true, null);
+});
+
+// ---- las parrillas de piezas ----
+function parrilla(destino, cuantos, nombres, hazConfig) {
+  const cont = document.getElementById(destino);
+  for (let i = 0; i < cuantos; i++) {
+    const caja = document.createElement('div');
+    caja.className = 'pieza';
+    const c = document.createElement('canvas');
+    c.width = 200; c.height = 200;
+    const eti = document.createElement('span');
+    eti.textContent = nombres[i];
+    caja.appendChild(c); caja.appendChild(eti);
+    cont.appendChild(caja);
+    dibuja(c.getContext('2d'), 200, hazConfig(i), false, null);
+  }
+}
+parrilla('p-cuerpos', 8, NOM.cuerpos, i => [i, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+parrilla('p-ojos', 16, NOM.ojos, i => [0, 1, i, 0, 0, 0, 0, 0, 0, 0, 0]);
+parrilla('p-bocas', 16, NOM.bocas, i => [0, 1, 0, i, 0, 0, 0, 0, 0, 0, 0]);
+
+const combos = [
+  [[0,1,0,0,1,0,0,0,0,0,0], 'Tres pelos'],
+  [[0,3,0,0,3,0,0,0,0,0,0], 'Afro'],
+  [[0,10,8,3,4,0,0,0,0,0,0], 'Cresta'],
+  [[0,7,0,13,2,0,0,0,0,0,0], 'Tupé'],
+  [[0,5,0,0,5,0,0,0,0,0,0], 'Moño'],
+  [[0,2,0,0,10,0,0,0,0,0,0], 'Rastas'],
+  [[0,1,0,0,14,0,0,0,0,0,0], 'De punta'],
+  [[0,4,0,0,7,0,0,0,0,0,0], 'Rizos'],
+  [[0,1,0,0,0,1,0,0,0,0,0], 'Boina'],
+  [[0,3,0,0,0,2,0,0,0,0,0], 'Gorra'],
+  [[0,13,0,0,0,5,0,0,0,0,0], 'Corona'],
+  [[0,4,0,0,0,6,0,0,0,0,0], 'Casco de obra'],
+  [[0,6,3,0,0,7,0,0,0,0,0], 'Cono de tráfico'],
+  [[0,1,0,0,0,8,0,0,0,0,0], 'Gorro de fiesta'],
+  [[0,9,0,0,0,9,0,0,0,0,0], 'Aureola'],
+  [[0,10,8,3,0,10,0,0,0,0,0], 'Cuernos'],
+  [[0,8,0,0,0,11,0,0,0,0,0], 'Sartén'],
+  [[0,1,0,0,0,13,0,0,0,0,0], 'Txapela'],
+  [[0,1,0,0,0,0,1,0,1,0,0], 'De sol y birra'],
+  [[0,11,0,0,0,0,3,0,6,0,0], 'Gafotas y calculadora'],
+  [[0,7,9,3,0,0,0,0,10,0,0], 'Cartera vacía'],
+  [[0,4,11,1,0,0,0,0,9,0,0], 'Pulgar gigante'],
+  [[0,2,0,4,0,0,0,0,11,0,0], 'Litrona'],
+  [[0,6,0,0,0,0,6,0,2,0,0], 'Monóculo y churro']
+];
+const contTocados = document.getElementById('p-tocados');
+combos.forEach(([m, nombre]) => {
+  const caja = document.createElement('div');
+  caja.className = 'pieza';
+  const c = document.createElement('canvas');
+  c.width = 200; c.height = 200;
+  const eti = document.createElement('span');
+  eti.textContent = nombre;
+  caja.appendChild(c); caja.appendChild(eti);
+  contTocados.appendChild(caja);
+  dibuja(c.getContext('2d'), 200, m, false, null);
+});
+</script>

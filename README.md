@@ -141,12 +141,17 @@ El CI de GitHub Actions compila el APK en cada push y lo publica como release
 
 ### Ver el monigote sin emulador
 
-[`herramientas/vista-monigote.html`](herramientas/vista-monigote.html) es un port
-de la geometría del monigote a `<canvas>`: se abre en el navegador y pinta la
-parrilla de formas, ojos, bocas y tocados. Sirve para ajustar proporciones sin
-arrancar un emulador. Si cambias la anatomía en
-[`avatar/Cuerpo.kt`](app/src/main/java/com/pulgares/app/avatar/Cuerpo.kt),
-actualiza también el HTML si quieres seguir usándolo.
+Este Mac no tiene emulador de Android instalado, así que en `herramientas/` hay dos
+ports de la geometría del monigote a `<canvas>` que se abren en el navegador:
+
+- [`vista-monigote.html`](herramientas/vista-monigote.html): la parrilla desnuda de
+  formas, ojos, bocas y tocados. Para ajustar proporciones.
+- [`vista-app.html`](herramientas/vista-app.html): la presentación completa, con
+  las tres pantallas maquetadas y el monigote bailando.
+
+Los dos son un port, no la app: si cambias la anatomía en
+[`avatar/Cuerpo.kt`](app/src/main/java/com/pulgares/app/avatar/Cuerpo.kt) hay que
+actualizarlos a mano para que sigan sirviendo.
 
 ## Lo que falta
 
