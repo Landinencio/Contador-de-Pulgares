@@ -44,6 +44,10 @@ interface GruposDao {
     @Query("SELECT * FROM grupos WHERE remotoId = :remotoId LIMIT 1")
     suspend fun grupoPorRemoto(remotoId: String): GrupoEntity?
 
+    /** La ronda del cobrador recorre todos los grupos de una tacada. */
+    @Query("SELECT * FROM grupos")
+    suspend fun gruposDeUnaVez(): List<GrupoEntity>
+
     @Upsert
     suspend fun guardaGrupo(grupo: GrupoEntity)
 

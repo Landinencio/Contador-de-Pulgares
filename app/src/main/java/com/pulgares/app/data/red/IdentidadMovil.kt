@@ -1,7 +1,9 @@
 package com.pulgares.app.data.red
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
@@ -22,6 +24,8 @@ class IdentidadMovil(private val context: Context) {
 
     private val clave = stringPreferencesKey("uid")
     private val claveRecuperacion = stringPreferencesKey("recuperacion")
+    private val claveCobrador = booleanPreferencesKey("cobradorContratado")
+    private val claveUltimoAviso = longPreferencesKey("cobradorUltimoAviso")
 
     /** El uid de este móvil; se crea al primer uso. */
     suspend fun uid(): String {
@@ -45,6 +49,22 @@ class IdentidadMovil(private val context: Context) {
                 .filter { it.isNotBlank() && !it.startsWith("$remotoId=") }
             prefs[claveRecuperacion] = (actuales + "$remotoId=$codigo").joinToString(";")
         }
+    }
+
+    // ---- el contrato del Cobrador del Frac ----
+
+    suspend fun cobradorContratado(): Boolean =
+        context.ajustes.data.first()[claveCobrador] ?: false
+
+    suspend fun contrataCobrador(contratado: Boolean) {
+        context.ajustes.edit { it[claveCobrador] = contratado }
+    }
+
+    suspend fun ultimoAvisoCobrador(): Long =
+        context.ajustes.data.first()[claveUltimoAviso] ?: 0L
+
+    suspend fun marcaAvisoCobrador(millis: Long) {
+        context.ajustes.edit { it[claveUltimoAviso] = millis }
     }
 
     suspend fun recuperacionDe(remotoId: String): String? =

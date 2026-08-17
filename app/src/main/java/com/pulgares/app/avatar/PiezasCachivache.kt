@@ -184,6 +184,16 @@ fun Pincel.dibujaCachivache(indice: Int) {
             linea(MX + 8f, MY - 15f, MX + 15f, MY - 15f, color = Tinta.NEGRA, grosor = 1.8f)
             linea(MX + 8f, MY - 10f, MX + 15f, MY - 10f, color = Tinta.NEGRA, grosor = 1.8f)
         }
+        // El maletín del Cobrador del Frac. Dentro solo lleva paciencia.
+        16 -> {
+            arco(MX, MY - 6f, 5f, 4.5f, 180f, 180f, grosor = 2.6f)
+            caja(MX, MY + 1f, 22f, 15f, 3f, Tinta.MARRON)
+            caja(MX, MY + 1f, 22f, 15f, 3f, Tinta.NEGRA, soloContorno = true, grosor = 2.4f)
+            // La junta de la tapa y el cierre dorado.
+            linea(MX - 11f, MY - 1.5f, MX + 11f, MY - 1.5f, color = Tinta.NEGRA.copy(alpha = 0.45f), grosor = 1.6f)
+            caja(MX, MY + 0.5f, 4.5f, 3.6f, 1f, Tinta.DORADA)
+            caja(MX, MY + 0.5f, 4.5f, 3.6f, 1f, Tinta.NEGRA, soloContorno = true, grosor = 1.4f)
+        }
     }
 }
 

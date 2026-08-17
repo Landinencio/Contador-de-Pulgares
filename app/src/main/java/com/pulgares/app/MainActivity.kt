@@ -1,10 +1,15 @@
 package com.pulgares.app
 
 import android.os.Bundle
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -35,11 +40,14 @@ import com.pulgares.app.domain.model.Dinero
 import com.pulgares.app.domain.model.Gasto
 import com.pulgares.app.frases.Frases
 import com.pulgares.app.frases.Momento
+import com.pulgares.app.notificaciones.CobradorWorker
 import com.pulgares.app.ui.PulgaresViewModel
 import com.pulgares.app.ui.components.LluviaDeConfeti
 import com.pulgares.app.ui.components.recuerdaCelebracion
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.core.content.ContextCompat
 import com.pulgares.app.ui.screens.BloqueCompartir
 import com.pulgares.app.ui.screens.DetalleGrupoScreen
 import com.pulgares.app.ui.screens.DialogoUnirse
@@ -59,12 +67,13 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val bd = BaseDatos.obten(applicationContext)
         val repo = Repositorio(bd)
+        val identidad = IdentidadMovil(applicationContext)
         // La sincronización es opcional: sin token en el build, ClienteNube se
         // declara no disponible y la app se queda como estaba, 100% local.
-        val nube = RepositorioNube(bd, repo, IdentidadMovil(applicationContext))
+        val nube = RepositorioNube(bd, repo, identidad)
         setContent {
             TemaPulgares {
-                AppPulgares(repo, nube)
+                AppPulgares(repo, nube, identidad)
             }
         }
     }
@@ -137,7 +146,11 @@ private sealed interface Pantalla {
 }
 
 @Composable
-fun AppPulgares(repo: Repositorio, nube: RepositorioNube? = null) {
+fun AppPulgares(
+    repo: Repositorio,
+    nube: RepositorioNube? = null,
+    identidad: IdentidadMovil? = null
+) {
     val vm: PulgaresViewModel = viewModel(factory = PulgaresViewModel.Fabrica(repo, nube))
     val grupos by vm.grupos.collectAsStateWithLifecycle()
     val estadoGrupo by vm.estadoGrupo.collectAsStateWithLifecycle()
@@ -156,8 +169,50 @@ fun AppPulgares(repo: Repositorio, nube: RepositorioNube? = null) {
     var recuperacion by remember { mutableStateOf<String?>(null) }
 
     val portapapeles = LocalClipboardManager.current
+    val contexto = LocalContext.current
     val avisos = remember { SnackbarHostState() }
     val alcance = rememberCoroutineScope()
+
+    // ---- el contrato del Cobrador del Frac ----
+    var cobradorContratado by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(identidad) {
+        cobradorContratado = identidad?.cobradorContratado() ?: false
+    }
+    // En Android 13+ las notificaciones piden permiso en tiempo de ejecución;
+    // se pide justo al contratar, que es cuando tiene sentido para el usuario.
+    val pidePermisoNotificaciones = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { concedido ->
+        if (!concedido) {
+            alcance.launch {
+                avisos.showSnackbar("Sin el permiso de notificaciones, el cobrador es mudo.")
+            }
+        }
+    }
+
+    fun contrataCobrador() {
+        if (identidad == null) return
+        cobradorContratado = true
+        alcance.launch { identidad.contrataCobrador(true) }
+        CobradorWorker.contrata(contexto)
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(contexto, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            pidePermisoNotificaciones.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        alcance.launch {
+            avisos.showSnackbar("Contratado. Cobra en frases, no en comisión.")
+        }
+    }
+
+    fun despideCobrador() {
+        if (identidad == null) return
+        cobradorContratado = false
+        alcance.launch { identidad.contrataCobrador(false) }
+        CobradorWorker.despide(contexto)
+        alcance.launch { avisos.showSnackbar("El cobrador cuelga el frac. De momento.") }
+    }
 
     fun avisa(texto: String) {
         alcance.launch { avisos.showSnackbar(texto) }
@@ -203,7 +258,10 @@ fun AppPulgares(repo: Repositorio, nube: RepositorioNube? = null) {
                         { uniendose = true }
                     } else {
                         null
-                    }
+                    },
+                    cobradorContratado = if (identidad == null) null else cobradorContratado,
+                    onContratarCobrador = ::contrataCobrador,
+                    onDespedirCobrador = ::despideCobrador
                 )
 
                 Pantalla.NuevoGrupo -> NuevoGrupoScreen(

@@ -72,6 +72,26 @@ data class Monigote(
         dimension.nombres.getOrElse(valorDe(dimension)) { "?" }
 
     companion object {
+        /**
+         * El Cobrador del Frac: la mascota de las notificaciones de deuda. El
+         * frac es el propio cuerpo (negro carbón) con la pechera de gala; el
+         * resto son piezas normales del catálogo, así que cualquiera puede
+         * vestir a su monigote de cobrador si le hace gracia.
+         */
+        val ELCOBRADOR = Monigote(
+            forma = 0,
+            color = 12,
+            ojos = 1,
+            boca = 13,
+            pelo = 0,
+            tocado = Catalogos.tocados.indexOf("Chistera"),
+            gafas = Catalogos.gafas.indexOf("Monóculo"),
+            barba = Catalogos.barbas.indexOf("Bigotón"),
+            accesorio = Catalogos.accesorios.indexOf("Maletín"),
+            marca = Catalogos.marcas.indexOf("Pechera de gala"),
+            fondo = 0
+        )
+
         /** El monigote de la casa: rosa, alubia y con cara de circunstancias. */
         val ELMONIGOTE = Monigote(
             forma = 0,
@@ -191,7 +211,7 @@ object Catalogos {
     val tocados = listOf(
         "Nada", "Boina", "Gorra", "Gorra al revés", "Sombrero de paja", "Corona",
         "Casco de obra", "Cono de tráfico", "Gorro de fiesta", "Aureola", "Cuernos",
-        "Sartén", "Cubo", "Txapela", "Diadema", "Gorro de dormir"
+        "Sartén", "Cubo", "Txapela", "Diadema", "Gorro de dormir", "Chistera"
     )
 
     val gafas = listOf(
@@ -208,12 +228,13 @@ object Catalogos {
     val accesorios = listOf(
         "Nada", "Jarra de birra", "Churro", "Móvil", "Billete", "Tarjeta",
         "Calculadora", "Bocadillo", "Dado", "Pulgar gigante", "Cartera vacía",
-        "Litrona", "Paraguas", "Porción de pizza", "Mando", "Pancarta"
+        "Litrona", "Paraguas", "Porción de pizza", "Mando", "Pancarta", "Maletín"
     )
 
     val marcas = listOf(
         "Nada", "Sonrojo", "Pecas", "Ojeras", "Tirita", "Gota de sudor",
-        "Lagrimón", "Chichón", "Granos", "Tatuaje de corazón", "Cicatriz", "Purpurina"
+        "Lagrimón", "Chichón", "Granos", "Tatuaje de corazón", "Cicatriz", "Purpurina",
+        "Pechera de gala"
     )
 
     val fondos = listOf(

@@ -718,9 +718,15 @@ footer {
     </div>
 
     <p class="sub medida" style="margin-top:18px">
-      Queda una pieza: el botón 👉 de dar un toque todavía se queda en tu móvil.
-      Para que le vibre al moroso hacen falta notificaciones, y eso es la próxima
-      fase.
+      Y la pieza que faltaba ya tiene nombre y chistera: <b class="gordo">el
+      Cobrador del Frac</b>. Se contrata desde la portada y ronda una vez al día:
+      sincroniza en silencio los grupos compartidos y, si debes algo, te lo
+      recuerda por notificación con una de sus frases — «He planchado el frac
+      para la ocasión: 23,40 €», «Un caballero no huye de sus deudas. Un
+      caballero hace un Bizum». Elegante y no pesado: nunca más de un aviso cada
+      dos días, y con el grupo a cero es mudo. Su retrato está ahí arriba, en la
+      parrilla de monigotes: todas sus piezas (chistera, pechera de gala,
+      maletín) están también en el editor para quien quiera ir de gala.
     </p>
   </section>
 
@@ -857,7 +863,9 @@ footer {
           aviso se queda en tu móvil: para que le vibre al moroso hace falta el paso
           anterior.
         </li>
-        <li>Exportar a CSV y gastos recurrentes (el alquiler, Netflix…).</li>
+        <li>Exportar a CSV y gastos recurrentes (el alquiler, Netflix…). Y el toque 👉
+        instantáneo de móvil a móvil, que en la práctica ya lo cubre la ronda
+        diaria del cobrador.</li>
       </ul>
     </div>
   </section>
@@ -1075,6 +1083,11 @@ function tocado(S,i) {
              S.caja(CX+26,C-3,24,5,2.5,T); break;
     case 13: S.ov(CX,C,24,7,'rgba(23,22,26,.9)'); S.ovC(CX,C,24,7,T,2.2);
              S.ov(CX,C-4,17,6,'rgba(23,22,26,.9)'); S.ovC(CX,C-4,17,6,T,2.2); break;
+    case 16: { const copa='#232027';
+             S.caja(CX,C-10,23,21,2.5,copa); S.caja(CX,C-10,23,21,2.5,T,true,2.2);
+             S.caja(CX,C-2.5,23,4.5,0.5,ROJA);
+             S.linea(CX-7,C-17,CX-7,C-7,'rgba(255,253,248,.22)',2.6);
+             S.ov(CX,C+0.5,20,4.4,copa); S.ovC(CX,C+0.5,20,4.4,T,2.2); break; }
   }
 }
 
@@ -1114,6 +1127,27 @@ function cachivache(S,i) {
                p.l(MX-2.5,MY-18); p.l(MX+2.5,MY-18); p.l(MX+2.5,MY-12);
                p.q(MX+5,MY-10,MX+6,MY-4); p.l(MX+6,MY+12); p.z(); },'rgba(62,187,124,.75)',2.2);
              S.caja(MX,MY-19,6,3,1,DOR); S.caja(MX,MY+3,12,7,1,'rgba(255,253,248,.85)'); break;
+    case 16: S.arco(MX,MY-6,5,4.5,180,180,T,2.6);
+             S.caja(MX,MY+1,22,15,3,MAR); S.caja(MX,MY+1,22,15,3,T,true,2.4);
+             S.linea(MX-11,MY-1.5,MX+11,MY-1.5,'rgba(23,22,26,.45)',1.6);
+             S.caja(MX,MY+0.5,4.5,3.6,1,DOR); S.caja(MX,MY+0.5,4.5,3.6,1,T,true,1.4); break;
+  }
+}
+
+function barba(S,i,pielIdx) {
+  const y = BOCA_Y, pl = pielIdx === 12 ? '#EDE7F2' : T;
+  if (i === 3) { S.pieza(p=>{ p.m(34,y-7); p.c(50,y-13,66,y-13,66,y-7);
+      p.q(64,y+3,56,y-3); p.q(50,y-6,44,y-3); p.q(36,y+3,34,y-7); p.z(); }, pl, 1.8); }
+}
+function marca(S,i) {
+  if (i === 12) {
+    const cx = CX;
+    S.pieza(p=>{ p.m(cx-8.5,60); p.c(cx-6.5,66,cx-5,70,cx,72.5);
+      p.c(cx+5,70,cx+6.5,66,cx+8.5,60); p.q(cx,63.5,cx-8.5,60); p.z(); }, BL, 2);
+    S.circ(cx,66.5,0.9,T); S.circ(cx,69.5,0.9,T);
+    S.pol([[cx-6,58.2],[cx-1.2,60.4],[cx-6,62.6]],ROJA,T,1.6);
+    S.pol([[cx+6,58.2],[cx+1.2,60.4],[cx+6,62.6]],ROJA,T,1.6);
+    S.circ(cx,60.4,1.7,ROJA); S.circC(cx,60.4,1.7,T,1.2);
   }
 }
 
@@ -1175,7 +1209,7 @@ function dibuja(ctx, lado, m, conFondo, fase) {
     S.ov(41,27,5.5,3.2,'rgba(255,253,248,.5)');
     S.cam(trazo); S.tz(3.2); S.g.stroke();
     // cara y complementos
-    ojos(S, m[2]); boca(S, m[3]); gafas(S, m[6]);
+    ojos(S, m[2]); boca(S, m[3]); barba(S, m[7], m[1]); gafas(S, m[6]); marca(S, m[9]);
     pelo(S, m[4], m[1]); tocado(S, m[5]); cachivache(S, m[8]);
   });
 }
@@ -1253,7 +1287,8 @@ const combos = [
   [[0,7,9,3,0,0,0,0,10,0,0], 'Cartera vacía'],
   [[0,4,11,1,0,0,0,0,9,0,0], 'Pulgar gigante'],
   [[0,2,0,4,0,0,0,0,11,0,0], 'Litrona'],
-  [[0,6,0,0,0,0,6,0,2,0,0], 'Monóculo y churro']
+  [[0,6,0,0,0,0,6,0,2,0,0], 'Monóculo y churro'],
+  [[0,12,1,13,0,16,6,3,16,12,0], 'El Cobrador del Frac 🎩']
 ];
 const contTocados = document.getElementById('p-tocados');
 combos.forEach(([m, nombre]) => {

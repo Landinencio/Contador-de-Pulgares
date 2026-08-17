@@ -46,7 +46,11 @@ fun PortadaScreen(
     onNuevoGrupo: () -> Unit,
     onEditarAvatar: () -> Unit,
     /** null si esta build no lleva sincronización: entonces no se ofrece. */
-    onUnirse: (() -> Unit)? = null
+    onUnirse: (() -> Unit)? = null,
+    /** Estado del Cobrador del Frac; null mientras se carga. */
+    cobradorContratado: Boolean? = null,
+    onContratarCobrador: () -> Unit = {},
+    onDespedirCobrador: () -> Unit = {}
 ) {
     val deboTotal = grupos.filter { it.miNeto < 0 }.sumOf { -it.miNeto }
     val meDebenTotal = grupos.filter { it.miNeto > 0 }.sumOf { it.miNeto }
@@ -153,6 +157,17 @@ fun PortadaScreen(
                     colorTexto = Paleta.Tinta,
                     onClick = onUnirse,
                     modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        // ---- el Cobrador del Frac ----
+        if (cobradorContratado != null) {
+            item {
+                TarjetaCobrador(
+                    contratado = cobradorContratado,
+                    onContratar = onContratarCobrador,
+                    onDespedir = onDespedirCobrador
                 )
             }
         }
@@ -284,4 +299,65 @@ private fun detalleGrupo(resumen: ResumenGrupo): String {
         ""
     }
     return "$gente colegas · $gastos$total"
+}
+
+/**
+ * La tarjeta del Cobrador del Frac: un caballero con chistera que recuerda las
+ * deudas por notificación. Elegante y no pesado: como mucho un aviso cada dos
+ * días, y solo si de verdad debes algo.
+ */
+@Composable
+private fun TarjetaCobrador(
+    contratado: Boolean,
+    onContratar: () -> Unit,
+    onDespedir: () -> Unit
+) {
+    Pegatina(
+        modifier = Modifier.fillMaxWidth(),
+        color = if (contratado) Paleta.CremaHundido else Paleta.MostazaSuave,
+        sombra = 4.dp,
+        radio = 24.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AvatarMonigote(
+                monigote = Monigote.ELCOBRADOR,
+                tamano = 74,
+                conFondo = false,
+                recortadoRedondo = false,
+                baila = !contratado,
+                descripcion = "El Cobrador del Frac"
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "El Cobrador del Frac",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = if (contratado) {
+                        "En nómina. Si debes algo, te lo recordará con retranca: " +
+                            "como mucho un aviso cada dos días."
+                    } else {
+                        "Contrátalo y te recordará tus deudas por notificación, " +
+                            "con la elegancia de un caballero y la paciencia de un acreedor."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(10.dp))
+                BotonPegatina(
+                    texto = if (contratado) "Despedirlo" else "Contratarlo",
+                    emoji = "🎩",
+                    color = if (contratado) Paleta.CremaHundido else Paleta.RosaChicle,
+                    colorTexto = if (contratado) Paleta.Tinta else Paleta.Papel,
+                    onClick = if (contratado) onDespedir else onContratar,
+                    sombra = 3.dp
+                )
+            }
+        }
+    }
 }

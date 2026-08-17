@@ -50,7 +50,14 @@ enum class Momento {
     CABECERA_DEBO,
 
     /** Cabecera cuando al usuario le deben. */
-    CABECERA_ME_DEBEN
+    CABECERA_ME_DEBEN,
+
+    /**
+     * Las notificaciones del Cobrador del Frac: un caballero con chistera que
+     * recuerda las deudas con una cortesia inquietante. Nunca insulta: amenaza
+     * con educacion exquisita.
+     */
+    COBRADOR
 }
 
 object Frases {
@@ -265,6 +272,24 @@ object Frases {
         "Debes {cuanto}. El monigote te está mirando."
     )
 
+    private val cobrador = listOf(
+        "Buenas. Le recuerdo con la máxima elegancia que debe {cuanto}.",
+        "He planchado el frac para la ocasión: {cuanto}.",
+        "Un caballero no huye de {cuanto}. Un caballero hace un Bizum.",
+        "Mi chistera y yo lamentamos comunicarle: {cuanto}.",
+        "Sin prisa. Sin pausa. {cuanto}.",
+        "Le sigo. A todas partes. Con elegancia. {cuanto}.",
+        "El maletín está listo. Solo faltan sus {cuanto}.",
+        "Hoy tampoco ha pagado usted sus {cuanto}. Queda anotado en el registro.",
+        "{cuanto}. O {pesetas}, si su corazón sigue en 1998.",
+        "La puntualidad es la cortesía de los reyes. {cuanto}, majestad.",
+        "Su deuda de {cuanto} y yo tomaremos asiento frente a su portal.",
+        "Elegancia es pagar {cuanto} antes de que yo silbe.",
+        "Llevo {dias} días esperándole con la misma sonrisa: {cuanto}.",
+        "No es una amenaza, es una agenda: {cuanto}, hoy.",
+        "El grupo me ha contratado. Cobro en frases. Usted debe {cuanto}."
+    )
+
     private val cabeceraMeDeben = listOf(
         "Te deben {cuanto}. Ve a por ello.",
         "{cuanto} a tu favor. Bien jugado.",
@@ -291,6 +316,7 @@ object Frases {
         Momento.SIN_GRUPOS -> sinGrupos
         Momento.CABECERA_DEBO -> cabeceraDebo
         Momento.CABECERA_ME_DEBEN -> cabeceraMeDeben
+        Momento.COBRADOR -> cobrador
     }
 
     /** Cuantas frases tiene el catalogo entero. Se presume de ello en Ajustes. */

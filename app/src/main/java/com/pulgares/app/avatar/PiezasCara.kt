@@ -601,6 +601,32 @@ fun Pincel.dibujaMarca(indice: Int) {
                 estrella(x, py, 2.6f, color)
             }
         }
+        // Pechera de gala: camisa blanca, botones y pajarita. El uniforme del
+        // Cobrador del Frac (sobre el cuerpo negro carbón parece un frac).
+        12 -> {
+            val cx = Anatomia.CX
+            val pechera = camino {
+                mueve(cx - 8.5f, 60f)
+                curva2(cx - 6.5f, 66f, cx - 5f, 70f, cx, 72.5f)
+                curva2(cx + 5f, 70f, cx + 6.5f, 66f, cx + 8.5f, 60f)
+                curva(cx, 63.5f, cx - 8.5f, 60f)
+                cierra()
+            }
+            pieza(pechera, Tinta.BLANCA, grosor = 2f)
+            circulo(cx, 66.5f, 0.9f, Tinta.NEGRA)
+            circulo(cx, 69.5f, 0.9f, Tinta.NEGRA)
+            // La pajarita.
+            poligono(
+                listOf(cx - 6f to 58.2f, cx - 1.2f to 60.4f, cx - 6f to 62.6f),
+                Tinta.ROJA, grosor = 1.6f
+            )
+            poligono(
+                listOf(cx + 6f to 58.2f, cx + 1.2f to 60.4f, cx + 6f to 62.6f),
+                Tinta.ROJA, grosor = 1.6f
+            )
+            circulo(cx, 60.4f, 1.7f, Tinta.ROJA)
+            circuloContorno(cx, 60.4f, 1.7f, grosor = 1.2f)
+        }
     }
 }
 

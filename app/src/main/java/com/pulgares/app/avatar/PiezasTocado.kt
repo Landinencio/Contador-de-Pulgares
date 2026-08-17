@@ -410,5 +410,18 @@ fun Pincel.dibujaTocado(indice: Int) {
             caja(CX, CIMA + 3f, 40f, 6f, 3f, Tinta.BLANCA)
             caja(CX, CIMA + 3f, 40f, 6f, 3f, Tinta.NEGRA, soloContorno = true, grosor = 2f)
         }
+        // Chistera: el sombrero del Cobrador del Frac, pero se la puede poner
+        // cualquiera que quiera ir de gala.
+        16 -> {
+            val copa = Color(0xFF232027)
+            caja(CX, CIMA - 10f, 23f, 21f, 2.5f, copa)
+            caja(CX, CIMA - 10f, 23f, 21f, 2.5f, Tinta.NEGRA, soloContorno = true, grosor = 2.2f)
+            // Banda granate y brillo de copa.
+            caja(CX, CIMA - 2.5f, 23f, 4.5f, 0.5f, Tinta.ROJA)
+            linea(CX - 7f, CIMA - 17f, CX - 7f, CIMA - 7f, color = Tinta.BLANCA.copy(alpha = 0.22f), grosor = 2.6f)
+            // El ala, por encima para tapar el arranque de la copa.
+            ovalo(CX, CIMA + 0.5f, 20f, 4.4f, copa)
+            ovaloContorno(CX, CIMA + 0.5f, 20f, 4.4f, grosor = 2.2f)
+        }
     }
 }

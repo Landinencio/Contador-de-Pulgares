@@ -43,6 +43,12 @@ dinero.
 - **Confeti** cuando el grupo se queda a cero. Solo entonces.
 - **Compartir el grupo** con un código de seis letras: quien lo teclee ve los
   mismos gastos. Sin registro, sin correo y sin cuentas.
+- **El Cobrador del Frac** 🎩: un caballero con chistera, monóculo y maletín que
+  te recuerda por notificación lo que debes. Elegante y no pesado: ronda una vez
+  al día, habla solo si de verdad debes algo, y nunca más de una vez cada dos
+  días. Antes de mirar, sincroniza en silencio los grupos compartidos, así se
+  entera de los gastos que apuntaron los demás aunque no abras la app. Se
+  contrata (y se despide) desde la portada.
 
 ### Las frases
 
@@ -139,7 +145,7 @@ Necesita JDK 17 y el SDK de Android (plataforma 35).
 JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleDebug
 ```
 
-Los tests (63, sobre dinero, pesetas, reparto, settlement, frases, avatares,
+Los tests (72, sobre dinero, pesetas, reparto, settlement, frases, avatares,
 sincronización y una tanda de regresiones: un test por cada fallo que ya se coló una vez):
 
 ```bash
@@ -219,7 +225,8 @@ falta, la app oculta el botón de compartir y funciona igual, entera y local.
 
 ## Lo que falta
 
-- [ ] **Notificaciones de verdad** para el botón de "dar un toque": hoy el aviso
-      se queda en el móvil del que lo manda. Requiere push (Firebase) o un
-      `WorkManager` que mire cada cierto rato.
+- [ ] El botón 👉 de dar un toque sigue siendo local (el aviso instantáneo al
+      moroso requeriría push de Firebase). En la práctica lo cubre el Cobrador
+      del Frac: si el moroso tiene la app y el grupo compartido, su propio
+      cobrador le da la ronda diaria.
 - [ ] Exportar a CSV y gastos recurrentes (el alquiler, Netflix…).
