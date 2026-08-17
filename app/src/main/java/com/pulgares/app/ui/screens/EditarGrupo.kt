@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,13 +56,14 @@ fun EditarGrupoScreen(
     onQuitarColega: (Colega) -> Unit,
     onEditarAvatarDe: (Colega) -> Unit,
     onRenombrarColega: (Colega, String) -> Unit,
+    onReadmitirColega: (Colega) -> Unit,
     onBorrarGrupo: () -> Unit,
     onVolver: () -> Unit
 ) {
     val grupo = estado.grupo
     var nombre by remember(grupo.id) { mutableStateOf(grupo.nombre) }
     var emoji by remember(grupo.id) { mutableStateOf(grupo.emoji) }
-    var nuevoColega by remember { mutableStateOf("") }
+    var nuevoColega by rememberSaveable { mutableStateOf("") }
     var aQuitar by remember { mutableStateOf<Colega?>(null) }
     var borrandoGrupo by remember { mutableStateOf(false) }
 
@@ -131,28 +133,93 @@ fun EditarGrupoScreen(
         // ---- la peña ----
         item {
             Text(
-                text = "La peña (${grupo.colegas.size})",
+                text = "La peña (${grupo.activos.size})",
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(top = 6.dp)
             )
             Text(
-                text = "Toca un monigote para cambiárselo. Con la chincheta se queda como está.",
+                text = "Toca un monigote para cambiárselo.",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
-        items(grupo.colegas, key = { it.id }) { colega ->
+        items(grupo.activos, key = { it.id }) { colega ->
             FilaColega(
                 colega = colega,
                 saldo = estado.saldoDe(colega.id),
+                puestoPorEl = estado.gastos.filter { it.pagadorId == colega.id }
+                    .sumOf { it.importeCentimos },
                 cuantosGastos = estado.gastos.count { it.pagadorId == colega.id },
-                puedeQuitarse = !colega.soyYo && grupo.colegas.size > 2,
+                puedeQuitarse = !colega.soyYo && grupo.activos.size > 2,
                 onEditarAvatar = { onEditarAvatarDe(colega) },
                 onRenombrar = { onRenombrarColega(colega, it) },
                 onQuitar = { aQuitar = colega }
             )
+        }
+
+        // ---- los que se fueron ----
+        if (grupo.salidos.isNotEmpty()) {
+            item {
+                Text(
+                    text = "Ya no están (${grupo.salidos.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(top = 10.dp)
+                )
+                Text(
+                    text = "Siguen en los gastos de antes, con su nombre y su parte.",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            items(grupo.salidos, key = { it.id }) { colega ->
+                val saldo = estado.saldoDe(colega.id)
+                Pegatina(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    sombra = 2.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AvatarMonigote(
+                            monigote = avatarDe(colega),
+                            tamano = 40,
+                            conFondo = false,
+                            descripcion = "Monigote de ${colega.nombre}"
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = colega.nombre,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = if (saldo == 0L) {
+                                    "Se fue sin deudas"
+                                } else if (saldo < 0) {
+                                    "Se fue debiendo ${Dinero.formatea(-saldo)}"
+                                } else {
+                                    "Se fue y le deben ${Dinero.formatea(saldo)}"
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        BotonRedondo(
+                            contenido = "↩",
+                            descripcion = "Volver a meter a ${colega.nombre} en el grupo",
+                            color = Paleta.VerdePazSuave,
+                            sombra = 2.dp,
+                            onClick = { onReadmitirColega(colega) }
+                        )
+                    }
+                }
+            }
         }
 
         // ---- añadir a alguien ----
@@ -266,12 +333,13 @@ fun EditarGrupoScreen(
         DialogoConfirmar(
             titulo = "¿Fuera ${candidato.nombre}?",
             mensaje = if (apareceEn > 0) {
-                "Sale de la lista, pero sigue apareciendo en $apareceEn " +
-                    (if (apareceEn == 1) "gasto ya apuntado" else "gastos ya apuntados") +
-                    ", así que las cuentas de esos gastos no cambian. Si tiene saldo pendiente, " +
-                    "seguirá saliendo en el plan de pagos."
+                "Deja de salir en los gastos nuevos, pero sigue en los $apareceEn " +
+                    (if (apareceEn == 1) "gasto que ya tenía" else "gastos que ya tenía") +
+                    ", con su nombre y su parte intactos. Si le queda saldo, sigue en el " +
+                    "plan de pagos. Se le puede volver a meter cuando quieras."
             } else {
-                "No aparece en ningún gasto, así que no se pierde nada."
+                "No aparece en ningún gasto, así que no se pierde nada. " +
+                    "Se le puede volver a meter cuando quieras."
             },
             textoConfirmar = "Fuera",
             emoji = "👋",
@@ -288,6 +356,7 @@ fun EditarGrupoScreen(
 private fun FilaColega(
     colega: Colega,
     saldo: Long,
+    puestoPorEl: Long,
     cuantosGastos: Int,
     puedeQuitarse: Boolean,
     onEditarAvatar: () -> Unit,
@@ -336,7 +405,7 @@ private fun FilaColega(
                             }
                         }
                         Text(
-                            text = detalleColega(saldo, cuantosGastos),
+                            text = detalleColega(saldo, puestoPorEl, cuantosGastos),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -376,12 +445,13 @@ private fun FilaColega(
     }
 }
 
-private fun detalleColega(saldo: Long, cuantosGastos: Int): String {
+private fun detalleColega(saldo: Long, puestoPorEl: Long, cuantosGastos: Int): String {
     val estado = when {
         saldo > 0 -> "le deben ${Dinero.formatea(saldo)}"
         saldo < 0 -> "debe ${Dinero.formatea(-saldo)}"
         else -> "en paz"
     }
-    val rango = Frases.rangoPagador(if (saldo > 0) saldo else 0L, cuantosGastos)
-    return "$estado · $rango"
+    // El rango va por lo que ha puesto, no por su saldo: quien adelanta mucho y
+    // luego cobra sigue siendo el de la tarjeta.
+    return "$estado · ${Frases.rangoPagador(puestoPorEl, cuantosGastos)}"
 }

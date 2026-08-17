@@ -38,7 +38,9 @@ data class ColegaEntity(
     val nombre: String,
     val avatar: String?,
     val soyYo: Boolean,
-    val orden: Int
+    val orden: Int,
+    /** Anadida en la version 2: quien sale del grupo se marca, no se borra. */
+    val activo: Boolean = true
 )
 
 @Entity(
@@ -76,7 +78,13 @@ data class PagoEntity(
 
 // ---- conversiones a dominio ----
 
-fun ColegaEntity.aDominio() = Colega(id = id, nombre = nombre, avatar = avatar, soyYo = soyYo)
+fun ColegaEntity.aDominio() = Colega(
+    id = id,
+    nombre = nombre,
+    avatar = avatar,
+    soyYo = soyYo,
+    activo = activo
+)
 
 fun Colega.aEntidad(grupoId: String, orden: Int) = ColegaEntity(
     id = id,
@@ -84,7 +92,8 @@ fun Colega.aEntidad(grupoId: String, orden: Int) = ColegaEntity(
     nombre = nombre,
     avatar = avatar,
     soyYo = soyYo,
-    orden = orden
+    orden = orden,
+    activo = activo
 )
 
 fun GrupoEntity.aDominio(colegas: List<Colega>) = Grupo(

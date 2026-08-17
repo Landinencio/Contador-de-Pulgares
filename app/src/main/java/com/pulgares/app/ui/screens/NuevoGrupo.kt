@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,10 +49,13 @@ fun NuevoGrupoScreen(
     onCrear: (nombre: String, emoji: String, colegas: List<String>, miNombre: String) -> Unit,
     onVolver: () -> Unit
 ) {
-    var nombre by remember { mutableStateOf("") }
-    var emoji by remember { mutableStateOf(emojisGrupo.first()) }
-    var miNombre by remember { mutableStateOf("Yo") }
+    // rememberSaveable para que girar el móvil no borre lo escrito.
+    var nombre by rememberSaveable { mutableStateOf("") }
+    var emoji by rememberSaveable { mutableStateOf(emojisGrupo.first()) }
+    var miNombre by rememberSaveable { mutableStateOf("Yo") }
     val colegas = remember { mutableStateListOf("", "") }
+    // Sin remember, el ejemplo saltaba a otro en cada tecla pulsada.
+    val ejemplo = remember { ejemplos.random() }
 
     val puedeCrear = nombre.isNotBlank() &&
         miNombre.isNotBlank() &&
@@ -90,7 +94,7 @@ fun NuevoGrupoScreen(
                         value = nombre,
                         onValueChange = { nombre = it },
                         label = { Text("¿Cómo se llama el grupo?") },
-                        placeholder = { Text(ejemplos.random()) },
+                        placeholder = { Text(ejemplo) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )

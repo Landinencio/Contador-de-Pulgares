@@ -48,7 +48,10 @@ fun EditorAvatarScreen(
     onVolver: () -> Unit,
     titulo: String = "Tu monigote"
 ) {
-    var monigote by remember { mutableStateOf(inicial) }
+    // Con la key: si el avatar de verdad llega despues (al restaurar la app,
+    // el flujo empieza con el monigote por defecto), el editor se pone al dia en
+    // vez de guardar el de por defecto encima del bueno.
+    var monigote by remember(inicial) { mutableStateOf(inicial) }
     var dimension by remember { mutableStateOf(Dimension.FORMA) }
 
     Column(

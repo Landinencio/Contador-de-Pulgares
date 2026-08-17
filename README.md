@@ -123,6 +123,11 @@ Dos decisiones que conviene no deshacer:
 - **El plan de pagos es el algoritmo greedy clásico** (el de Splitwise y
   compañía): se empareja al que más debe con el que más se le debe. No garantiza
   el óptimo teórico (es NP-duro) pero deja como máximo N−1 bizums.
+- **Un gasto no se reescribe nunca.** Al editarlo se conservan su fecha y sus
+  pulgares, y quien sale del grupo se marca como inactivo en vez de borrarse. Si se
+  borrase, sus gastos perderían el nombre y —peor— al editar uno de ellos el
+  reparto se recalcularía entre los que quedan, cambiando deudas que el grupo ya
+  había cerrado.
 
 ## Compilar
 
@@ -132,7 +137,8 @@ Necesita JDK 17 y el SDK de Android (plataforma 35).
 JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleDebug
 ```
 
-Los tests (47, sobre dinero, pesetas, reparto, settlement, frases y avatares):
+Los tests (55, sobre dinero, pesetas, reparto, settlement, frases, avatares y una
+tanda de regresiones: un test por cada fallo que ya se coló una vez):
 
 ```bash
 JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew testDebugUnitTest

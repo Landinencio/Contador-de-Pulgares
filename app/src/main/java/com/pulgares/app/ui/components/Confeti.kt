@@ -75,13 +75,19 @@ fun LluviaDeConfeti(dispara: Boolean, onFin: () -> Unit) {
  * Detecta el momento exacto en que [enPaz] pasa de false a true y devuelve un
  * interruptor para el confeti. Si el grupo ya estaba en paz al entrar, no se
  * celebra nada: la fiesta es por saldar, no por estar saldado.
+ *
+ * [de] identifica de quién se habla (el grupo abierto). Sin eso, abrir un grupo
+ * que ya estaba a cero disparaba el confeti, porque el estado de partida era el
+ * de la pantalla anterior, donde no había ningún grupo.
  */
 @Composable
-fun recuerdaCelebracion(enPaz: Boolean): Pair<Boolean, () -> Unit> {
+fun recuerdaCelebracion(enPaz: Boolean, de: String?): Pair<Boolean, () -> Unit> {
     var celebrar by remember { mutableStateOf(false) }
-    var estabaEnPaz by remember { mutableStateOf(enPaz) }
+    // La key reinicia el punto de partida al cambiar de grupo, así que lo que se
+    // compara es siempre la evolución de ESE grupo.
+    var estabaEnPaz by remember(de) { mutableStateOf(enPaz) }
 
-    LaunchedEffect(enPaz) {
+    LaunchedEffect(de, enPaz) {
         if (enPaz && !estabaEnPaz) celebrar = true
         estabaEnPaz = enPaz
     }

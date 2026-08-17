@@ -329,7 +329,7 @@ footer {
       </p>
       <p class="entradilla medida" style="font-size:16px">
         Android nativo (Kotlin + Compose), todo en el móvil. Cada importe va
-        también en pesetas. <b class="gordo">43 tests</b> en verde y APK que ya se
+        también en pesetas. <b class="gordo">47 tests</b> en verde y APK que ya se
         instala.
       </p>
     </div>
@@ -678,23 +678,97 @@ footer {
         <p class="mini-nota">Sin cuentas · Sin internet · Cero coste</p>
       </article>
       <article class="pega">
-        <h3>El plan: un código de seis letras</h3>
+        <h3>El plan: un código de seis caracteres</h3>
         <p>
-          Creas el grupo y sale un código tipo <code>PAGA-42</code>. Se lo mandas por
-          WhatsApp, el otro lo teclea en su app y desde ese momento los dos móviles
-          ven los mismos gastos. Sin registro y sin correo: el código <em>es</em> la
-          invitación, como en un Kahoot.
+          Creas el grupo y sale un código tipo <code>PAGA42</code>. Se lo mandas por
+          WhatsApp, el otro lo teclea y desde ese momento los dos móviles ven los
+          mismos gastos. Sin registro y sin correo: el código <em>es</em> la
+          invitación. El alfabeto se queda en 31 símbolos porque quita los que se
+          confunden al dictarlos — sin <code>0</code>, <code>O</code>,
+          <code>1</code>, <code>I</code> ni <code>L</code> — y aun así salen 887
+          millones de combinaciones.
         </p>
         <p class="mini-nota">
-          Backend en tu cuenta personal de AWS · Nada tocado todavía
+          Mismo patrón que Entre Páginas · Backend en tu AWS · Nada tocado todavía
         </p>
       </article>
     </div>
+    <div class="tripas" style="margin-top:20px">
+      <article class="pega">
+        <h3>Fusionar sin conflictos</h3>
+        <p>
+          Aquí hay suerte de diseño: cada gasto y cada bizum ya llevan un
+          identificador único y no se editan una vez apuntados. Sincronizar es
+          entonces la unión de dos listas, sin resolver conflictos ni necesitar un
+          reloj compartido. Dos personas apuntando gastos a la vez no pueden
+          pisarse.
+        </p>
+      </article>
+      <article class="pega">
+        <h3>Dos cosas que arreglaremos por el camino</h3>
+        <p>
+          El código de Entre Páginas se genera con un aleatorio predecible (y con él
+          también el código que transfiere la administración del club), y al crear
+          no comprueba si ese código ya existía. Aquí se generará con el aleatorio
+          criptográfico del sistema y con reintento contra el índice. Y habrá botón
+          para <b class="gordo">cambiar el código</b>: hoy, a quien echan del grupo
+          le basta con haberlo apuntado para volver a entrar.
+        </p>
+      </article>
+    </div>
+
     <p class="sub medida" style="margin-top:18px">
       Ese mismo paso es el que desbloquea el botón 👉 de dar un toque: hoy el aviso
       se queda en tu móvil, y con la sincronización le llega la notificación al
       moroso — con su frase correspondiente, claro.
     </p>
+  </section>
+
+  <section>
+    <p class="rotulo">Segunda vuelta</p>
+    <h2>Lo que salió al repasarla</h2>
+    <p class="sub medida">
+      Con la app ya funcionando, un repaso a fondo destapó cosas que habrían dolido
+      de verdad en un grupo real.
+    </p>
+    <div class="tripas">
+      <article class="pega" style="background:var(--rojo-suave)">
+        <h3>La papelera no preguntaba</h3>
+        <p>
+          El botón de borrar estaba en la cabecera del grupo —donde se toca sin
+          querer— y se llevaba el grupo con todos sus gastos al instante. Ahora vive
+          en los ajustes y avisa de cuántos gastos se van y de si quedaban cuentas
+          sin saldar.
+        </p>
+      </article>
+      <article class="pega" style="background:var(--mostaza-suave)">
+        <h3>Un grupo era para siempre</h3>
+        <p>
+          No se podía tocar nada tras crearlo: si te olvidabas de un colega, no
+          había vuelta atrás. Ahora hay ajustes para renombrar, cambiar el icono,
+          añadir y sacar gente, y ponerle monigote a cada uno. Al sacar a alguien se
+          dice en cuántos gastos sigue apareciendo, porque esos gastos no se
+          reescriben: cambiarían cuentas que el grupo ya dio por buenas.
+        </p>
+      </article>
+      <article class="pega">
+        <h3>El atrás cerraba la app</h3>
+        <p>
+          Desde cualquier pantalla. Y al girar el móvil volvías a la portada. Ahora
+          el atrás recorre la jerarquía y la pantalla abierta sobrevive al giro y a
+          que Android mate la app por memoria.
+        </p>
+      </article>
+      <article class="pega">
+        <h3>Y un bizum era para siempre</h3>
+        <p>
+          Apuntar un pago por error dejaba las cuentas mal sin remedio; ahora se
+          deshace. Los botones de icono ya dicen lo que hacen al lector de pantalla,
+          y hay cuatro tests nuevos que vigilan que el dinero no se pierda ni en un
+          gasto de un céntimo entre tres.
+        </p>
+      </article>
+    </div>
   </section>
 
   <section>
@@ -753,7 +827,7 @@ footer {
           aviso se queda en tu móvil: para que le vibre al moroso hace falta el paso
           anterior.
         </li>
-        <li>Confeti al dejar un grupo a cero, exportar a CSV y gastos recurrentes.</li>
+        <li>Exportar a CSV y gastos recurrentes (el alquiler, Netflix…).</li>
       </ul>
     </div>
   </section>

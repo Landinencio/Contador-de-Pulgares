@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pulgares.app.data.EstadoGrupo
 import com.pulgares.app.data.Repositorio
 import com.pulgares.app.data.local.BaseDatos
 import com.pulgares.app.domain.model.Dinero
@@ -163,7 +164,8 @@ fun AppPulgares(repo: Repositorio) {
     // porque no has gastado nada no es ningún logro.
     val grupoAbierto = estadoGrupo
     val (celebrar, finCelebracion) = recuerdaCelebracion(
-        grupoAbierto != null && grupoAbierto.enPaz && grupoAbierto.gastos.isNotEmpty()
+        enPaz = grupoAbierto != null && grupoAbierto.enPaz && grupoAbierto.gastos.isNotEmpty(),
+        de = grupoAbierto?.grupo?.id
     )
 
     Scaffold(
@@ -238,7 +240,7 @@ fun AppPulgares(repo: Repositorio) {
                                 // en el movil del moroso.
                                 avisa(
                                     Frases.para(
-                                        Momento.DEBES,
+                                        Momento.TOQUE,
                                         quien = colega.nombre,
                                         centimos = deuda
                                     )
@@ -270,10 +272,14 @@ fun AppPulgares(repo: Repositorio) {
                             },
                             onQuitarColega = { colega ->
                                 vm.quitaColega(actual.grupoId, estado.grupo.colegas, colega)
-                                avisa("${colega.nombre} sale del grupo.")
+                                avisa("${colega.nombre} sale del grupo. Sus gastos se quedan.")
                             },
                             onRenombrarColega = { colega, nombre ->
                                 vm.renombraColega(actual.grupoId, estado.grupo.colegas, colega, nombre)
+                            },
+                            onReadmitirColega = { colega ->
+                                vm.readmiteColega(actual.grupoId, estado.grupo.colegas, colega)
+                                avisa("${colega.nombre} vuelve al grupo.")
                             },
                             onEditarAvatarDe = { colega ->
                                 pantalla = Pantalla.AvatarDeColega(actual.grupoId, colega.id)
@@ -319,7 +325,10 @@ fun AppPulgares(repo: Repositorio) {
                             estado.gastos.firstOrNull { it.id == id }
                         }
                         NuevoGastoScreen(
-                            colegas = estado.grupo.colegas,
+                            // Los que ya no están en el grupo solo aparecen si el
+                            // gasto que se edita los incluía: así se mantiene su
+                            // parte y no se recalculan cuentas ya cerradas.
+                            colegas = colegasDelGasto(estado, existente),
                             gastoExistente = existente,
                             onGuardar = { concepto, importe, pagadorId, categoria, reparto, nota ->
                                 vm.apuntaGasto(
@@ -330,7 +339,7 @@ fun AppPulgares(repo: Repositorio) {
                                     categoria = categoria,
                                     reparto = reparto,
                                     nota = nota,
-                                    gastoExistenteId = existente?.id
+                                    original = existente
                                 )
                                 pantalla = Pantalla.Grupo(actual.grupoId)
                                 avisa(
@@ -368,6 +377,21 @@ fun AppPulgares(repo: Repositorio) {
             LluviaDeConfeti(dispara = celebrar, onFin = finCelebracion)
         }
     }
+}
+
+/**
+ * Quién puede salir en la pantalla de un gasto: los que están en el grupo, más
+ * los que ya se fueron pero participaban en ese gasto concreto (incluido quien
+ * lo pagó). Sin esto, editar la categoría de un gasto viejo lo re-repartía entre
+ * los que quedan y cambiaba deudas que el grupo ya había cerrado.
+ */
+private fun colegasDelGasto(estado: EstadoGrupo, gasto: Gasto?): List<com.pulgares.app.domain.model.Colega> {
+    val activos = estado.grupo.activos
+    if (gasto == null) return activos
+
+    val implicados = gasto.reparto.implicados.toSet() + gasto.pagadorId
+    val salidosQueImportan = estado.grupo.salidos.filter { it.id in implicados }
+    return activos + salidosQueImportan
 }
 
 @Composable

@@ -17,6 +17,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -35,6 +39,7 @@ import com.pulgares.app.frases.Momento
 import com.pulgares.app.ui.components.BotonPegatina
 import com.pulgares.app.ui.components.BotonRedondo
 import com.pulgares.app.ui.components.Chapa
+import com.pulgares.app.ui.components.DialogoConfirmar
 import com.pulgares.app.ui.components.Importe
 import com.pulgares.app.ui.components.Pegatina
 import com.pulgares.app.ui.theme.Paleta
@@ -61,6 +66,9 @@ fun DetalleGrupoScreen(
     val grupo = estado.grupo
     val yo = grupo.yo
     val ahora = System.currentTimeMillis()
+    // Mover dinero pasa por confirmación: además de evitar el "¿le he dado?",
+    // el diálogo impide que dos toques rápidos registren dos bizums iguales.
+    var aPagar by remember { mutableStateOf<Transferencia?>(null) }
 
     LazyColumn(
         modifier = Modifier
@@ -147,7 +155,7 @@ fun DetalleGrupoScreen(
                     transferencia = transferencia,
                     estado = estado,
                     soyElQuePaga = transferencia.deQuienId == yo?.id,
-                    onPagar = { onPagar(transferencia) }
+                    onPagar = { aPagar = transferencia }
                 )
             }
         }
@@ -300,6 +308,27 @@ fun DetalleGrupoScreen(
                 modifier = Modifier.fillMaxWidth()
             )
         }
+    }
+
+    val pago = aPagar
+    if (pago != null) {
+        val quienPaga = grupo.nombreDe(pago.deQuienId)
+        val quienCobra = grupo.nombreDe(pago.aQuienId)
+        DialogoConfirmar(
+            titulo = "¿Ya está pagado?",
+            mensaje = "Se apunta que $quienPaga le ha pasado " +
+                "${Dinero.formatea(pago.importeCentimos)} a $quienCobra " +
+                "(${Dinero.formateaPesetas(pago.importeCentimos)}). " +
+                "La app no mueve dinero: esto solo deja constancia de un bizum que ya has hecho.",
+            textoConfirmar = "Sí, pagado",
+            emoji = "💸",
+            colorConfirmar = Paleta.VerdePaz,
+            onConfirmar = {
+                aPagar = null
+                onPagar(pago)
+            },
+            onCancelar = { aPagar = null }
+        )
     }
 }
 

@@ -6,13 +6,22 @@ package com.pulgares.app.domain.model
  * plan de pagos.
  */
 
-/** Un colega del grupo. El avatar se guarda serializado (ver AvatarConfig). */
+/**
+ * Un colega del grupo. El avatar se guarda serializado (ver Monigote).
+ *
+ * Cuando alguien deja el grupo NO se borra su fila: se marca [activo] a false.
+ * Si se borrara, sus gastos se quedarian con un id sin nombre y el plan de pagos
+ * diria "Un fantasma debe 15 €"; y al editar uno de esos gastos, el reparto se
+ * recalcularia sin el, cambiando cuentas que el grupo ya habia dado por buenas.
+ */
 data class Colega(
     val id: String,
     val nombre: String,
     val avatar: String? = null,
     /** Solo uno de los colegas es el dueno del movil. */
-    val soyYo: Boolean = false
+    val soyYo: Boolean = false,
+    /** false = ya no esta en el grupo, pero sigue en los gastos de antes. */
+    val activo: Boolean = true
 )
 
 /** Como se parte un gasto entre los colegas. */
@@ -30,10 +39,14 @@ sealed interface Reparto {
     /** A dedo: cada uno pone exactamente lo suyo. Debe sumar el importe. */
     data class Exacto(val importes: Map<String, Long>) : Reparto
 
-    /** Los ids implicados, sea cual sea el modo. */
+    /**
+     * Los ids implicados, sea cual sea el modo, y sin repetidos: un id duplicado
+     * en un escote hacia que su parte se contase una sola vez y el resto del
+     * dinero se evaporase, dejando los saldos del grupo sin sumar cero.
+     */
     val implicados: List<String>
         get() = when (this) {
-            is Escote -> entre
+            is Escote -> entre.distinct()
             is PorPartes -> pesos.keys.toList()
             is Exacto -> importes.keys.toList()
         }
@@ -82,7 +95,7 @@ data class Gasto(
     /** Cuanto le toca a cada colega en este gasto concreto. */
     fun deudas(): Map<String, Long> = when (val r = reparto) {
         is Reparto.Escote -> {
-            val ids = r.entre
+            val ids = r.entre.distinct()
             if (ids.isEmpty()) {
                 emptyMap()
             } else {
@@ -147,6 +160,14 @@ data class Grupo(
     val codigo: String? = null
 ) {
     fun colega(id: String): Colega? = colegas.firstOrNull { it.id == id }
+
     fun nombreDe(id: String): String = colega(id)?.nombre ?: "Un fantasma"
+
     val yo: Colega? get() = colegas.firstOrNull { it.soyYo }
+
+    /** Los que siguen en el grupo: los unicos a los que se puede meter en un gasto nuevo. */
+    val activos: List<Colega> get() = colegas.filter { it.activo }
+
+    /** Los que se fueron pero siguen apareciendo en gastos viejos. */
+    val salidos: List<Colega> get() = colegas.filterNot { it.activo }
 }

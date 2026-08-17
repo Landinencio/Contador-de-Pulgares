@@ -70,12 +70,24 @@ class PulgaresViewModel(private val repo: Repositorio) : ViewModel() {
     }
 
     /**
-     * Saca a un colega de la lista. Sus gastos NO se tocan: reescribir gastos ya
-     * repartidos cambiaria cuentas que el grupo ya dio por buenas.
+     * Saca a un colega del grupo. No se borra su ficha: se marca como inactivo,
+     * asi sus gastos de antes siguen teniendo nombre y cara, y el reparto de esos
+     * gastos no cambia. Se puede readmitir con [readmiteColega].
      */
     fun quitaColega(grupoId: String, colegas: List<Colega>, fuera: Colega) {
+        cambiaActivo(grupoId, colegas, fuera, activo = false)
+    }
+
+    fun readmiteColega(grupoId: String, colegas: List<Colega>, vuelve: Colega) {
+        cambiaActivo(grupoId, colegas, vuelve, activo = true)
+    }
+
+    private fun cambiaActivo(grupoId: String, colegas: List<Colega>, quien: Colega, activo: Boolean) {
         viewModelScope.launch {
-            repo.guardaColegas(grupoId, colegas.filterNot { it.id == fuera.id })
+            repo.guardaColegas(
+                grupoId,
+                colegas.map { if (it.id == quien.id) it.copy(activo = activo) else it }
+            )
         }
     }
 
@@ -93,7 +105,14 @@ class PulgaresViewModel(private val repo: Repositorio) : ViewModel() {
         viewModelScope.launch { repo.borraPago(pagoId) }
     }
 
-    /** Apunta un gasto nuevo. Devuelve el gasto guardado por si hay que celebrarlo. */
+    /**
+     * Apunta un gasto nuevo o guarda los cambios de uno que ya existe.
+     *
+     * [original] es el gasto tal y como estaba: de ahi se conservan la fecha y
+     * los pulgares. Sin eso, corregir una tilde del concepto borraba los votos
+     * del gasto y lo fechaba hoy, lo que ademas reiniciaba la antiguedad de la
+     * deuda y sacaba al moroso del salon de la fama.
+     */
     fun apuntaGasto(
         grupoId: String,
         concepto: String,
@@ -102,20 +121,22 @@ class PulgaresViewModel(private val repo: Repositorio) : ViewModel() {
         categoria: Categoria,
         reparto: Reparto,
         nota: String?,
-        gastoExistenteId: String? = null
+        original: Gasto? = null
     ) {
         viewModelScope.launch {
             repo.guardaGasto(
                 Gasto(
-                    id = gastoExistenteId ?: Repositorio.nuevoId(),
+                    id = original?.id ?: Repositorio.nuevoId(),
                     grupoId = grupoId,
                     concepto = concepto.ifBlank { "Sin nombre" },
                     importeCentimos = importeCentimos,
                     pagadorId = pagadorId,
-                    fechaMillis = System.currentTimeMillis(),
+                    fechaMillis = original?.fechaMillis ?: System.currentTimeMillis(),
                     categoria = categoria,
                     reparto = reparto,
-                    nota = nota?.ifBlank { null }
+                    nota = nota?.ifBlank { null },
+                    pulgaresArriba = original?.pulgaresArriba ?: emptySet(),
+                    pulgaresAbajo = original?.pulgaresAbajo ?: emptySet()
                 )
             )
         }

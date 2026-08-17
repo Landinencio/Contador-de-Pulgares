@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,19 +65,25 @@ fun NuevoGastoScreen(
 ) {
     val yo = colegas.firstOrNull { it.soyYo }
 
-    var concepto by remember { mutableStateOf(gastoExistente?.concepto ?: "") }
-    var importeTexto by remember {
+    // rememberSaveable: girar el móvil recrea la Activity, y con remember normal
+    // el formulario se quedaba en blanco a media faena.
+    var concepto by rememberSaveable { mutableStateOf(gastoExistente?.concepto ?: "") }
+    var importeTexto by rememberSaveable {
         mutableStateOf(
             gastoExistente?.let { Dinero.formatea(it.importeCentimos, conSimbolo = false) } ?: ""
         )
     }
-    var pagadorId by remember { mutableStateOf(gastoExistente?.pagadorId ?: yo?.id ?: colegas.firstOrNull()?.id ?: "") }
-    var categoria by remember { mutableStateOf(gastoExistente?.categoria ?: Categoria.BIRRAS) }
-    var nota by remember { mutableStateOf(gastoExistente?.nota ?: "") }
-    var borrando by remember { mutableStateOf(false) }
+    var pagadorId by rememberSaveable {
+        mutableStateOf(gastoExistente?.pagadorId ?: yo?.id ?: colegas.firstOrNull()?.id ?: "")
+    }
+    var categoria by rememberSaveable {
+        mutableStateOf(gastoExistente?.categoria ?: Categoria.BIRRAS)
+    }
+    var nota by rememberSaveable { mutableStateOf(gastoExistente?.nota ?: "") }
+    var borrando by rememberSaveable { mutableStateOf(false) }
 
     val repartoInicial = gastoExistente?.reparto
-    var modo by remember {
+    var modo by rememberSaveable {
         mutableStateOf(
             when (repartoInicial) {
                 is Reparto.PorPartes -> ModoReparto.PARTES
@@ -285,8 +292,12 @@ fun NuevoGastoScreen(
                 marcado = marcados[colega.id] ?: true,
                 partes = partes[colega.id] ?: 1,
                 exacto = exactos[colega.id] ?: "",
-                leToca = reparto.let { r ->
-                    if (importeCentimos <= 0) 0L else previsionDe(r, importeCentimos, colega.id)
+                leToca = if (importeCentimos <= 0) {
+                    0L
+                } else {
+                    // Con el id real: de él depende a quién le cae el céntimo
+                    // suelto, así que con un id inventado la previsión mentía.
+                    previsionDe(reparto, importeCentimos, colega.id, gastoExistente?.id)
                 },
                 onMarcar = { marcados[colega.id] = it },
                 onPartes = { partes[colega.id] = it.coerceIn(0, 20) },
@@ -487,9 +498,14 @@ private fun construyeReparto(
 }
 
 /** Cuánto le tocaría a un colega con el reparto actual (para la vista previa). */
-private fun previsionDe(reparto: Reparto, importe: Long, colegaId: String): Long {
+private fun previsionDe(
+    reparto: Reparto,
+    importe: Long,
+    colegaId: String,
+    gastoId: String?
+): Long {
     val falso = Gasto(
-        id = "prevision",
+        id = gastoId ?: "",
         grupoId = "",
         concepto = "",
         importeCentimos = importe,

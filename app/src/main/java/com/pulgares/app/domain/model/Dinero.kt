@@ -9,7 +9,20 @@ import kotlin.math.abs
  */
 object Dinero {
 
-    /** "12,50" o "12.50" o "12" -> 1250 centimos. Devuelve null si no cuela. */
+    /**
+     * Cuantos digitos enteros se admiten. Nueve dan hasta 999.999.999 €, que
+     * cubre cualquier cena imaginable y deja de sobra para que ni la conversion a
+     * pesetas ni el reparto proporcional desborden el Long.
+     */
+    const val MAX_DIGITOS = 9
+
+    /**
+     * "12,50" o "12.50" o "12" -> 1250 centimos. Devuelve null si no cuela.
+     *
+     * Tambien devuelve null si el numero es absurdamente grande: sin ese tope,
+     * teclear veinte digitos daba la vuelta al Long y se guardaba un importe que
+     * no tenia nada que ver con lo escrito.
+     */
     fun parse(texto: String): Long? {
         val limpio = texto.trim()
             .replace("€", "")
@@ -22,6 +35,7 @@ object Dinero {
 
         val enteros = partes[0].ifEmpty { "0" }
         if (!enteros.all { it.isDigit() }) return null
+        if (enteros.trimStart('0').length > MAX_DIGITOS) return null
 
         val decimales = if (partes.size == 2) partes[1] else ""
         if (!decimales.all { it.isDigit() }) return null
@@ -59,7 +73,11 @@ object Dinero {
      */
     fun aPesetas(centimos: Long): Long {
         val signo = if (centimos < 0) -1L else 1L
-        val valorAbsoluto = abs(centimos)
+        // Tope para que la multiplicacion no de la vuelta al Long y salgan
+        // pesetas negativas debajo de euros positivos. Se descuenta el 50.000 del
+        // redondeo, que tambien tiene que caber.
+        val techo = (Long.MAX_VALUE - 50_000L) / 166_386L
+        val valorAbsoluto = abs(centimos).coerceAtMost(techo)
         return signo * ((valorAbsoluto * 166_386L + 50_000L) / 100_000L)
     }
 
@@ -129,12 +147,15 @@ object Dinero {
         val enteros = brutos.map { it / suma }.toMutableList()
         var repartido = enteros.sum()
 
-        // Ordena por resto descendente para dar los centimos que faltan.
-        val porResto = brutos.indices.sortedByDescending { brutos[it] % suma }
+        // Ordena por resto descendente para dar los centimos que faltan. Con
+        // total negativo la division entera trunca hacia cero, asi que lo que
+        // falta va en la otra direccion: el paso es +1 o -1 segun el signo.
+        val paso = if (total < 0) -1L else 1L
+        val porResto = brutos.indices.sortedByDescending { abs(brutos[it] % suma) }
         var i = 0
-        while (repartido < total && porResto.isNotEmpty()) {
-            enteros[porResto[i % porResto.size]] += 1
-            repartido += 1
+        while (repartido != total && porResto.isNotEmpty()) {
+            enteros[porResto[i % porResto.size]] += paso
+            repartido += paso
             i += 1
         }
         return enteros

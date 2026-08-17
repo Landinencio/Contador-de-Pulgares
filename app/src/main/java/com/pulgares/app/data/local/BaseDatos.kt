@@ -11,6 +11,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.Upsert
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -106,7 +108,7 @@ interface PagosDao {
 
 @Database(
     entities = [GrupoEntity::class, ColegaEntity::class, GastoEntity::class, PagoEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class BaseDatos : RoomDatabase() {
@@ -118,12 +120,26 @@ abstract class BaseDatos : RoomDatabase() {
         @Volatile
         private var instancia: BaseDatos? = null
 
+        /**
+         * v1 -> v2: los colegas ganan `activo`. Quien sale del grupo se marca en
+         * vez de borrarse, para que sus gastos sigan teniendo nombre. Todos los
+         * que ya existen entran como activos.
+         */
+        private val DE_1_A_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE colegas ADD COLUMN activo INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
         fun obten(context: Context): BaseDatos = instancia ?: synchronized(this) {
             instancia ?: Room.databaseBuilder(
                 context.applicationContext,
                 BaseDatos::class.java,
                 "pulgares.db"
-            ).build().also { instancia = it }
+            )
+                .addMigrations(DE_1_A_2)
+                .build()
+                .also { instancia = it }
         }
     }
 }

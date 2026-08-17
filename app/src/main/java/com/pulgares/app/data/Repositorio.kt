@@ -134,7 +134,19 @@ class Repositorio(private val bd: BaseDatos) {
 
     suspend fun borraGrupo(grupoId: String) = bd.grupos().borraGrupoEntero(grupoId)
 
-    suspend fun guardaGasto(gasto: Gasto) = bd.gastos().guarda(gasto.aEntidad())
+    /**
+     * Guarda un gasto. Se comprueba que el reparto sume el importe: la pantalla ya
+     * lo valida, asi que un descuadre aqui solo puede venir de un error de codigo
+     * o de un dato importado, y colarlo dejaria los saldos del grupo sin sumar
+     * cero para siempre, con un residuo que ninguna pantalla sabe explicar.
+     */
+    suspend fun guardaGasto(gasto: Gasto) {
+        require(gasto.cuadra) {
+            "El reparto de «${gasto.concepto}» suma ${gasto.deudas().values.sum()} " +
+                "en vez de ${gasto.importeCentimos}"
+        }
+        bd.gastos().guarda(gasto.aEntidad())
+    }
 
     suspend fun borraGasto(gastoId: String) = bd.gastos().borraPorId(gastoId)
 

@@ -48,6 +48,9 @@ fun PortadaScreen(
 ) {
     val deboTotal = grupos.filter { it.miNeto < 0 }.sumOf { -it.miNeto }
     val meDebenTotal = grupos.filter { it.miNeto > 0 }.sumOf { it.miNeto }
+    // "Todo en paz" es del grupo entero, no solo de mi saldo: si Luis le debe a
+    // Ana y yo estoy a cero, aquí no hay ninguna paz que celebrar.
+    val todoSaldado = grupos.isNotEmpty() && grupos.all { it.enPaz }
 
     LazyColumn(
         modifier = Modifier
@@ -90,7 +93,11 @@ fun PortadaScreen(
 
         // ---- el resumen gordo ----
         item {
-            ResumenPersonal(deboTotal = deboTotal, meDebenTotal = meDebenTotal)
+            ResumenPersonal(
+                deboTotal = deboTotal,
+                meDebenTotal = meDebenTotal,
+                todoSaldado = todoSaldado
+            )
         }
 
         // ---- grupos ----
@@ -141,8 +148,9 @@ fun PortadaScreen(
 
 /** El cartel de "debes X" / "te deben Y", con su coña correspondiente. */
 @Composable
-private fun ResumenPersonal(deboTotal: Long, meDebenTotal: Long) {
-    val enPaz = deboTotal == 0L && meDebenTotal == 0L
+private fun ResumenPersonal(deboTotal: Long, meDebenTotal: Long, todoSaldado: Boolean) {
+    val yoEstoyACero = deboTotal == 0L && meDebenTotal == 0L
+    val enPaz = yoEstoyACero && todoSaldado
     val color = when {
         enPaz -> Paleta.VerdePazSuave
         deboTotal > meDebenTotal -> Paleta.RojoDeudaSuave
@@ -150,6 +158,7 @@ private fun ResumenPersonal(deboTotal: Long, meDebenTotal: Long) {
     }
     val frase = when {
         enPaz -> Frases.para(Momento.EN_PAZ, semilla = 2)
+        yoEstoyACero -> "Tú estás a cero. Los demás, allá ellos."
         deboTotal > meDebenTotal -> Frases.para(
             Momento.CABECERA_DEBO,
             centimos = deboTotal,
@@ -169,7 +178,7 @@ private fun ResumenPersonal(deboTotal: Long, meDebenTotal: Long) {
                 style = MaterialTheme.typography.titleLarge,
                 color = Paleta.Tinta
             )
-            if (!enPaz) {
+            if (!yoEstoyACero) {
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (deboTotal > 0) {
