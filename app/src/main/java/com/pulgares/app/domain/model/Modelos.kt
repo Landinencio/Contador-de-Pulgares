@@ -94,7 +94,13 @@ data class Gasto(
      * la version mas alta, asi que una copia vieja que llega tarde no pisa una
      * edicion mas nueva. En un solo movil da igual.
      */
-    val version: Long = 0L
+    val version: Long = 0L,
+    /**
+     * Lapida. En un grupo compartido, borrar no puede ser borrar la fila: el
+     * otro movil la devolveria en la siguiente sincronizacion, resucitando el
+     * gasto. Se marca y se oculta, y la marca viaja igual que una edicion.
+     */
+    val borrado: Boolean = false
 ) {
     val saldoPulgares: Int get() = pulgaresArriba.size - pulgaresAbajo.size
 
@@ -154,7 +160,9 @@ data class Pago(
     val fechaMillis: Long,
     val nota: String? = null,
     /** Ver [Gasto.version]. */
-    val version: Long = 0L
+    val version: Long = 0L,
+    /** Ver [Gasto.borrado]. */
+    val borrado: Boolean = false
 )
 
 /** Un grupo de gente que se debe cosas. */

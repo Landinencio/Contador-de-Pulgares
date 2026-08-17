@@ -232,7 +232,11 @@ class PulgaresViewModel(
                     reparto = reparto,
                     nota = nota?.ifBlank { null },
                     pulgaresArriba = original?.pulgaresArriba ?: emptySet(),
-                    pulgaresAbajo = original?.pulgaresAbajo ?: emptySet()
+                    pulgaresAbajo = original?.pulgaresAbajo ?: emptySet(),
+                    // La version es el arbitro de la sincronizacion: cada
+                    // guardado la sube para que esta edicion gane a las copias
+                    // anteriores en los demas moviles.
+                    version = System.currentTimeMillis()
                 )
             )
         }

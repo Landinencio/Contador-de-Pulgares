@@ -74,7 +74,9 @@ data class GastoEntity(
      * quien gana al sincronizar: una subida con version mas vieja que la que hay
      * en la nube se ignora en vez de retroceder el estado.
      */
-    val version: Long = 0L
+    val version: Long = 0L,
+    /** Anadida en la version 5: lapida para que un borrado no resucite al sincronizar. */
+    val borrado: Boolean = false
 )
 
 @Entity(
@@ -90,7 +92,9 @@ data class PagoEntity(
     val fechaMillis: Long,
     val nota: String?,
     /** Anadida en la version 3, igual que en los gastos. */
-    val version: Long = 0L
+    val version: Long = 0L,
+    /** Anadida en la version 5, igual que en los gastos. */
+    val borrado: Boolean = false
 )
 
 // ---- conversiones a dominio ----
@@ -146,7 +150,8 @@ fun GastoEntity.aDominio() = Gasto(
     nota = nota,
     pulgaresArriba = ids(pulgaresArriba),
     pulgaresAbajo = ids(pulgaresAbajo),
-    version = version
+    version = version,
+    borrado = borrado
 )
 
 fun Gasto.aEntidad() = GastoEntity(
@@ -161,7 +166,8 @@ fun Gasto.aEntidad() = GastoEntity(
     nota = nota,
     pulgaresArriba = pulgaresArriba.joinToString(","),
     pulgaresAbajo = pulgaresAbajo.joinToString(","),
-    version = version
+    version = version,
+    borrado = borrado
 )
 
 fun PagoEntity.aDominio() = Pago(
@@ -172,7 +178,8 @@ fun PagoEntity.aDominio() = Pago(
     importeCentimos = importeCentimos,
     fechaMillis = fechaMillis,
     nota = nota,
-    version = version
+    version = version,
+    borrado = borrado
 )
 
 fun Pago.aEntidad() = PagoEntity(
@@ -183,7 +190,8 @@ fun Pago.aEntidad() = PagoEntity(
     importeCentimos = importeCentimos,
     fechaMillis = fechaMillis,
     nota = nota,
-    version = version
+    version = version,
+    borrado = borrado
 )
 
 private fun ids(bruto: String): Set<String> =

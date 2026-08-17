@@ -81,10 +81,10 @@ interface GruposDao {
 @Dao
 interface GastosDao {
 
-    @Query("SELECT * FROM gastos WHERE grupoId = :grupoId ORDER BY fechaMillis DESC")
+    @Query("SELECT * FROM gastos WHERE grupoId = :grupoId AND borrado = 0 ORDER BY fechaMillis DESC")
     fun observaGastos(grupoId: String): Flow<List<GastoEntity>>
 
-    @Query("SELECT * FROM gastos ORDER BY fechaMillis DESC")
+    @Query("SELECT * FROM gastos WHERE borrado = 0 ORDER BY fechaMillis DESC")
     fun observaTodos(): Flow<List<GastoEntity>>
 
     @Query("SELECT * FROM gastos WHERE id = :id")
@@ -106,14 +106,17 @@ interface GastosDao {
 @Dao
 interface PagosDao {
 
-    @Query("SELECT * FROM pagos WHERE grupoId = :grupoId ORDER BY fechaMillis DESC")
+    @Query("SELECT * FROM pagos WHERE grupoId = :grupoId AND borrado = 0 ORDER BY fechaMillis DESC")
     fun observaPagos(grupoId: String): Flow<List<PagoEntity>>
 
-    @Query("SELECT * FROM pagos ORDER BY fechaMillis DESC")
+    @Query("SELECT * FROM pagos WHERE borrado = 0 ORDER BY fechaMillis DESC")
     fun observaTodos(): Flow<List<PagoEntity>>
 
     @Query("SELECT * FROM pagos WHERE grupoId = :grupoId ORDER BY fechaMillis DESC")
     suspend fun pagosDeUnaVez(grupoId: String): List<PagoEntity>
+
+    @Query("SELECT * FROM pagos WHERE id = :id")
+    suspend fun pagoPorId(id: String): PagoEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun guarda(pago: PagoEntity)
@@ -124,7 +127,7 @@ interface PagosDao {
 
 @Database(
     entities = [GrupoEntity::class, ColegaEntity::class, GastoEntity::class, PagoEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class BaseDatos : RoomDatabase() {
@@ -171,13 +174,25 @@ abstract class BaseDatos : RoomDatabase() {
             }
         }
 
+        /**
+         * v4 -> v5: lapidas. En un grupo compartido, borrar de verdad haria que
+         * el otro movil devolviera la fila en la siguiente sincronizacion; se
+         * marca `borrado` y la marca viaja como cualquier edicion.
+         */
+        private val DE_4_A_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE gastos ADD COLUMN borrado INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE pagos ADD COLUMN borrado INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun obten(context: Context): BaseDatos = instancia ?: synchronized(this) {
             instancia ?: Room.databaseBuilder(
                 context.applicationContext,
                 BaseDatos::class.java,
                 "pulgares.db"
             )
-                .addMigrations(DE_1_A_2, DE_2_A_3, DE_3_A_4)
+                .addMigrations(DE_1_A_2, DE_2_A_3, DE_3_A_4, DE_4_A_5)
                 .build()
                 .also { instancia = it }
         }

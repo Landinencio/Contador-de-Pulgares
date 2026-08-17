@@ -159,6 +159,44 @@ class SincronizadorTest {
     }
 
     @Test
+    fun `una lapida gana al gasto vivo si es mas nueva`() {
+        // El caso que motiva las lapidas: A borra un gasto (lapida v2000) y B
+        // todavia tiene la copia viva (v1000). Al fusionar, el borrado gana; si
+        // se borrase la fila de verdad, B lo devolveria y el gasto resucitaria.
+        val vivo = gasto("1", version = 1000)
+        val lapida = gasto("1", version = 2000).copy(borrado = true)
+
+        val a = Sincronizador.fusiona(listOf(lapida), listOf(vivo), Gasto::id, Gasto::version)
+        assertTrue(a.single().borrado)
+
+        val b = Sincronizador.fusiona(listOf(vivo), listOf(lapida), Gasto::id, Gasto::version)
+        assertTrue(b.single().borrado)
+    }
+
+    @Test
+    fun `el flag de borrado viaja en los dos sentidos`() {
+        val paquete = Sincronizador.paqueteDeSubida(
+            grupoId = "local",
+            remotoId = "remoto",
+            colegas = emptyList(),
+            gastos = listOf(gasto("1").copy(borrado = true)),
+            pagos = emptyList()
+        )
+        assertTrue(paquete.getJSONArray("gastos").getJSONObject(0).getBoolean("borrado"))
+
+        val leido = Sincronizador.leeGrupo(
+            JSONObject(
+                """{"grupoId":"x","nombre":"N","emoji":"👥","codigo":"AAAAAA",
+                    "gastos":[{"id":"1","concepto":"C","importeCentimos":100,
+                    "pagadorId":"r","fechaMillis":1,"categoria":"BIRRAS",
+                    "reparto":"escote:r","version":5,"borrado":true}]}"""
+            ),
+            "local"
+        )
+        assertTrue(leido.gastos.single().borrado)
+    }
+
+    @Test
     fun `un grupo sin gastos ni colegas no revienta al leerlo`() {
         val json = JSONObject("""{"grupoId":"x","nombre":"Nuevo","emoji":"👥","codigo":"AAAAAA"}""")
         val remoto = Sincronizador.leeGrupo(json, "local")

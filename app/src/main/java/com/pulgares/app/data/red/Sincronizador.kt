@@ -56,6 +56,7 @@ object Sincronizador {
                         .put("pulgaresArriba", JSONArray(gasto.pulgaresArriba.toList()))
                         .put("pulgaresAbajo", JSONArray(gasto.pulgaresAbajo.toList()))
                         .put("version", gasto.version)
+                        .put("borrado", gasto.borrado)
                 )
             }
         })
@@ -71,6 +72,7 @@ object Sincronizador {
                         .put("fechaMillis", pago.fechaMillis)
                         .put("nota", pago.nota ?: JSONObject.NULL)
                         .put("version", pago.version)
+                        .put("borrado", pago.borrado)
                 )
             }
         })
@@ -120,7 +122,8 @@ object Sincronizador {
                 nota = item.optString("nota").takeIf { it.isNotBlank() && it != "null" },
                 pulgaresArriba = item.optJSONArray("pulgaresArriba").aConjunto(),
                 pulgaresAbajo = item.optJSONArray("pulgaresAbajo").aConjunto(),
-                version = item.optLong("version")
+                version = item.optLong("version"),
+                borrado = item.optBoolean("borrado", false)
             )
         }.filterNot { it.id.isBlank() }
 
@@ -133,7 +136,8 @@ object Sincronizador {
                 importeCentimos = item.optLong("importeCentimos"),
                 fechaMillis = item.optLong("fechaMillis"),
                 nota = item.optString("nota").takeIf { it.isNotBlank() && it != "null" },
-                version = item.optLong("version")
+                version = item.optLong("version"),
+                borrado = item.optBoolean("borrado", false)
             )
         }
 
