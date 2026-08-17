@@ -58,7 +58,9 @@ fun EditarGrupoScreen(
     onRenombrarColega: (Colega, String) -> Unit,
     onReadmitirColega: (Colega) -> Unit,
     onBorrarGrupo: () -> Unit,
-    onVolver: () -> Unit
+    onVolver: () -> Unit,
+    /** El bloque de compartir el grupo, que lo monta quien conoce la nube. */
+    bloqueCompartir: (@Composable () -> Unit)? = null
 ) {
     val grupo = estado.grupo
     var nombre by remember(grupo.id) { mutableStateOf(grupo.nombre) }
@@ -128,6 +130,11 @@ fun EditarGrupoScreen(
                     )
                 }
             }
+        }
+
+        // ---- compartir ----
+        if (bloqueCompartir != null) {
+            item { bloqueCompartir() }
         }
 
         // ---- la peña ----

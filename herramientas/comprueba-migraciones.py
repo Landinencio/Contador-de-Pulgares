@@ -28,6 +28,14 @@ MIGRACIONES: dict[tuple[int, int], list[str]] = {
     (1, 2): [
         "ALTER TABLE colegas ADD COLUMN activo INTEGER NOT NULL DEFAULT 1",
     ],
+    (2, 3): [
+        "ALTER TABLE gastos ADD COLUMN version INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE pagos ADD COLUMN version INTEGER NOT NULL DEFAULT 0",
+    ],
+    (3, 4): [
+        "ALTER TABLE grupos ADD COLUMN remotoId TEXT DEFAULT NULL",
+        "ALTER TABLE grupos ADD COLUMN version INTEGER NOT NULL DEFAULT 0",
+    ],
 }
 
 # Filas de ejemplo por versión de partida, para comprobar que los datos que ya
@@ -38,11 +46,25 @@ DATOS_DE_PRUEBA: dict[int, list[str]] = {
         "INSERT INTO colegas VALUES ('c1','g1','Ana',NULL,0,0)",
         "INSERT INTO colegas VALUES ('c2','g1','Yo',NULL,1,1)",
     ],
+    2: [
+        "INSERT INTO grupos VALUES ('g1','El piso','🏠',0,NULL)",
+        "INSERT INTO colegas VALUES ('c1','g1','Ana',NULL,0,0,1)",
+        "INSERT INTO gastos VALUES ('x1','g1','Cañas',1000,'c1',0,'BIRRAS','escote:c1',NULL,'','')",
+        "INSERT INTO pagos VALUES ('p1','g1','c1','c2',500,0,NULL)",
+    ],
+    3: [
+        "INSERT INTO grupos VALUES ('g1','El piso','🏠',0,NULL)",
+        "INSERT INTO colegas VALUES ('c1','g1','Ana',NULL,0,0,1)",
+        "INSERT INTO gastos VALUES ('x1','g1','Cañas',1000,'c1',0,'BIRRAS','escote:c1',NULL,'','',0)",
+    ],
 }
 
 # Lo que tiene que valer cada columna nueva en las filas que ya existían.
 VALORES_ESPERADOS: dict[tuple[int, int], list[tuple[str, str, object]]] = {
     (1, 2): [("colegas", "activo", 1)],
+    (2, 3): [("gastos", "version", 0), ("pagos", "version", 0)],
+    # remotoId se queda NULL: un grupo que ya existía no está compartido.
+    (3, 4): [("grupos", "remotoId", None), ("grupos", "version", 0)],
 }
 
 

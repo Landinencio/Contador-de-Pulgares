@@ -28,7 +28,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pulgares.app.data.EstadoGrupo
 import com.pulgares.app.data.Repositorio
+import com.pulgares.app.data.RepositorioNube
 import com.pulgares.app.data.local.BaseDatos
+import com.pulgares.app.data.red.IdentidadMovil
 import com.pulgares.app.domain.model.Dinero
 import com.pulgares.app.domain.model.Gasto
 import com.pulgares.app.frases.Frases
@@ -36,7 +38,11 @@ import com.pulgares.app.frases.Momento
 import com.pulgares.app.ui.PulgaresViewModel
 import com.pulgares.app.ui.components.LluviaDeConfeti
 import com.pulgares.app.ui.components.recuerdaCelebracion
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import com.pulgares.app.ui.screens.BloqueCompartir
 import com.pulgares.app.ui.screens.DetalleGrupoScreen
+import com.pulgares.app.ui.screens.DialogoUnirse
 import com.pulgares.app.ui.screens.EditarGrupoScreen
 import com.pulgares.app.ui.screens.EditorAvatarScreen
 import com.pulgares.app.ui.screens.avatarDe
@@ -51,10 +57,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val repo = Repositorio(BaseDatos.obten(applicationContext))
+        val bd = BaseDatos.obten(applicationContext)
+        val repo = Repositorio(bd)
+        // La sincronización es opcional: sin token en el build, ClienteNube se
+        // declara no disponible y la app se queda como estaba, 100% local.
+        val nube = RepositorioNube(bd, repo, IdentidadMovil(applicationContext))
         setContent {
             TemaPulgares {
-                AppPulgares(repo)
+                AppPulgares(repo, nube)
             }
         }
     }
@@ -127,8 +137,8 @@ private sealed interface Pantalla {
 }
 
 @Composable
-fun AppPulgares(repo: Repositorio) {
-    val vm: PulgaresViewModel = viewModel(factory = PulgaresViewModel.Fabrica(repo))
+fun AppPulgares(repo: Repositorio, nube: RepositorioNube? = null) {
+    val vm: PulgaresViewModel = viewModel(factory = PulgaresViewModel.Fabrica(repo, nube))
     val grupos by vm.grupos.collectAsStateWithLifecycle()
     val estadoGrupo by vm.estadoGrupo.collectAsStateWithLifecycle()
     val miAvatar by vm.miAvatar.collectAsStateWithLifecycle()
@@ -140,6 +150,12 @@ fun AppPulgares(repo: Repositorio) {
         )
     ) { mutableStateOf<Pantalla>(Pantalla.Portada) }
 
+    val sincronizando by vm.sincronizando.collectAsStateWithLifecycle()
+    val grupoAlQueUnirse by vm.grupoAlQueUnirse.collectAsStateWithLifecycle()
+    var uniendose by remember { mutableStateOf(false) }
+    var recuperacion by remember { mutableStateOf<String?>(null) }
+
+    val portapapeles = LocalClipboardManager.current
     val avisos = remember { SnackbarHostState() }
     val alcance = rememberCoroutineScope()
 
@@ -182,7 +198,12 @@ fun AppPulgares(repo: Repositorio) {
                         pantalla = Pantalla.Grupo(id)
                     },
                     onNuevoGrupo = { pantalla = Pantalla.NuevoGrupo },
-                    onEditarAvatar = { pantalla = Pantalla.MiAvatar }
+                    onEditarAvatar = { pantalla = Pantalla.MiAvatar },
+                    onUnirse = if (vm.nubeDisponible) {
+                        { uniendose = true }
+                    } else {
+                        null
+                    }
                 )
 
                 Pantalla.NuevoGrupo -> NuevoGrupoScreen(
@@ -289,7 +310,55 @@ fun AppPulgares(repo: Repositorio) {
                                 pantalla = Pantalla.Portada
                                 avisa("Grupo borrado. Aquí no ha pasado nada.")
                             },
-                            onVolver = { pantalla = Pantalla.Grupo(actual.grupoId) }
+                            onVolver = { pantalla = Pantalla.Grupo(actual.grupoId) },
+                            bloqueCompartir = {
+                                // El código de recuperación se pide al entrar aquí.
+                                LaunchedEffect(estado.grupo.remotoId) {
+                                    vm.codigoDeRecuperacion(actual.grupoId) { recuperacion = it }
+                                }
+                                BloqueCompartir(
+                                    grupo = estado.grupo,
+                                    disponible = vm.nubeDisponible,
+                                    sincronizando = sincronizando,
+                                    codigoRecuperacion = recuperacion,
+                                    onCompartir = {
+                                        vm.comparte(
+                                            actual.grupoId,
+                                            onHecho = { codigo ->
+                                                avisa("Compartido. El código es $codigo")
+                                            },
+                                            onError = { avisa(it) }
+                                        )
+                                    },
+                                    onSincronizar = {
+                                        vm.sincroniza(
+                                            actual.grupoId,
+                                            onHecho = { resultado ->
+                                                avisa(resumenSync(resultado))
+                                            },
+                                            onError = { avisa(it) }
+                                        )
+                                    },
+                                    onRotarCodigo = {
+                                        vm.rotaCodigo(
+                                            actual.grupoId,
+                                            onHecho = { avisa("Código nuevo: $it") },
+                                            onError = { avisa(it) }
+                                        )
+                                    },
+                                    onDejarDeCompartir = {
+                                        vm.dejaDeCompartir(
+                                            actual.grupoId,
+                                            onHecho = { avisa("El grupo se queda en este móvil.") },
+                                            onError = { avisa(it) }
+                                        )
+                                    },
+                                    onCopiarCodigo = { codigo ->
+                                        portapapeles.setText(AnnotatedString(codigo))
+                                        avisa("Código copiado: pégalo en el grupo de WhatsApp.")
+                                    }
+                                )
+                            }
                         )
                     }
                 }
@@ -373,6 +442,31 @@ fun AppPulgares(repo: Repositorio) {
                 )
             }
 
+            if (uniendose) {
+                DialogoUnirse(
+                    mirado = grupoAlQueUnirse,
+                    sincronizando = sincronizando,
+                    onMirar = { codigo -> vm.miraCodigo(codigo) { avisa(it) } },
+                    onEntrar = { codigo, colegaId, nombre ->
+                        vm.entra(
+                            codigo = codigo,
+                            colegaId = colegaId,
+                            miNombre = nombre,
+                            onHecho = { grupoId ->
+                                uniendose = false
+                                pantalla = Pantalla.Grupo(grupoId)
+                                avisa("Dentro. Que empiece el drama.")
+                            },
+                            onError = { avisa(it) }
+                        )
+                    },
+                    onCerrar = {
+                        uniendose = false
+                        vm.olvidaGrupoAlQueUnirse()
+                    }
+                )
+            }
+
             // Va al final del Box para caer por encima de cualquier pantalla.
             LluviaDeConfeti(dispara = celebrar, onFin = finCelebracion)
         }
@@ -392,6 +486,18 @@ private fun colegasDelGasto(estado: EstadoGrupo, gasto: Gasto?): List<com.pulgar
     val implicados = gasto.reparto.implicados.toSet() + gasto.pagadorId
     val salidosQueImportan = estado.grupo.salidos.filter { it.id in implicados }
     return activos + salidosQueImportan
+}
+
+/** Qué contarle al usuario después de sincronizar. */
+private fun resumenSync(resultado: RepositorioNube.Resultado): String = when {
+    resultado.gastosNuevos == 0 && resultado.pagosNuevos == 0 ->
+        "Todo al día: no había nada nuevo."
+    resultado.gastosNuevos > 0 && resultado.pagosNuevos > 0 ->
+        "Llegan ${resultado.gastosNuevos} gastos y ${resultado.pagosNuevos} bizums nuevos."
+    resultado.gastosNuevos == 1 -> "Llega un gasto nuevo."
+    resultado.gastosNuevos > 1 -> "Llegan ${resultado.gastosNuevos} gastos nuevos."
+    resultado.pagosNuevos == 1 -> "Llega un bizum nuevo."
+    else -> "Llegan ${resultado.pagosNuevos} bizums nuevos."
 }
 
 @Composable

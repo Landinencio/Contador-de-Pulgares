@@ -44,7 +44,9 @@ fun PortadaScreen(
     miAvatar: Monigote,
     onAbrirGrupo: (String) -> Unit,
     onNuevoGrupo: () -> Unit,
-    onEditarAvatar: () -> Unit
+    onEditarAvatar: () -> Unit,
+    /** null si esta build no lleva sincronización: entonces no se ofrece. */
+    onUnirse: (() -> Unit)? = null
 ) {
     val deboTotal = grupos.filter { it.miNeto < 0 }.sumOf { -it.miNeto }
     val meDebenTotal = grupos.filter { it.miNeto > 0 }.sumOf { it.miNeto }
@@ -142,6 +144,17 @@ fun PortadaScreen(
                 onClick = onNuevoGrupo,
                 modifier = Modifier.fillMaxWidth()
             )
+            if (onUnirse != null) {
+                Spacer(Modifier.height(10.dp))
+                BotonPegatina(
+                    texto = "Unirme con un código",
+                    emoji = "🔗",
+                    color = Paleta.MostazaPulgar,
+                    colorTexto = Paleta.Tinta,
+                    onClick = onUnirse,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }

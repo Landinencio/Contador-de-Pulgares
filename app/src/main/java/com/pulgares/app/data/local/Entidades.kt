@@ -25,7 +25,16 @@ data class GrupoEntity(
     val nombre: String,
     val emoji: String,
     val creadoMillis: Long,
-    val codigo: String?
+    /** Codigo de invitacion, si el grupo esta compartido. */
+    val codigo: String?,
+    /**
+     * Anadido en la version 4. Id que tiene este grupo en la nube: el backend
+     * genera el suyo, asi que no coincide con el id local. null = grupo que solo
+     * vive en este movil.
+     */
+    val remotoId: String? = null,
+    /** Millis del ultimo cambio de nombre o emoji, para el arbitraje al sincronizar. */
+    val version: Long = 0L
 )
 
 @Entity(
@@ -59,7 +68,13 @@ data class GastoEntity(
     val reparto: String,
     val nota: String?,
     val pulgaresArriba: String,
-    val pulgaresAbajo: String
+    val pulgaresAbajo: String,
+    /**
+     * Anadida en la version 3. Millis del ultimo cambio, y es lo que decide
+     * quien gana al sincronizar: una subida con version mas vieja que la que hay
+     * en la nube se ignora en vez de retroceder el estado.
+     */
+    val version: Long = 0L
 )
 
 @Entity(
@@ -73,7 +88,9 @@ data class PagoEntity(
     val aQuienId: String,
     val importeCentimos: Long,
     val fechaMillis: Long,
-    val nota: String?
+    val nota: String?,
+    /** Anadida en la version 3, igual que en los gastos. */
+    val version: Long = 0L
 )
 
 // ---- conversiones a dominio ----
@@ -102,7 +119,9 @@ fun GrupoEntity.aDominio(colegas: List<Colega>) = Grupo(
     emoji = emoji,
     colegas = colegas,
     creadoMillis = creadoMillis,
-    codigo = codigo
+    codigo = codigo,
+    remotoId = remotoId,
+    version = version
 )
 
 fun Grupo.aEntidad() = GrupoEntity(
@@ -110,7 +129,9 @@ fun Grupo.aEntidad() = GrupoEntity(
     nombre = nombre,
     emoji = emoji,
     creadoMillis = creadoMillis,
-    codigo = codigo
+    codigo = codigo,
+    remotoId = remotoId,
+    version = version
 )
 
 fun GastoEntity.aDominio() = Gasto(
@@ -124,7 +145,8 @@ fun GastoEntity.aDominio() = Gasto(
     reparto = RepartoTexto.parse(reparto),
     nota = nota,
     pulgaresArriba = ids(pulgaresArriba),
-    pulgaresAbajo = ids(pulgaresAbajo)
+    pulgaresAbajo = ids(pulgaresAbajo),
+    version = version
 )
 
 fun Gasto.aEntidad() = GastoEntity(
@@ -138,7 +160,8 @@ fun Gasto.aEntidad() = GastoEntity(
     reparto = RepartoTexto.serializa(reparto),
     nota = nota,
     pulgaresArriba = pulgaresArriba.joinToString(","),
-    pulgaresAbajo = pulgaresAbajo.joinToString(",")
+    pulgaresAbajo = pulgaresAbajo.joinToString(","),
+    version = version
 )
 
 fun PagoEntity.aDominio() = Pago(
@@ -148,7 +171,8 @@ fun PagoEntity.aDominio() = Pago(
     aQuienId = aQuienId,
     importeCentimos = importeCentimos,
     fechaMillis = fechaMillis,
-    nota = nota
+    nota = nota,
+    version = version
 )
 
 fun Pago.aEntidad() = PagoEntity(
@@ -158,7 +182,8 @@ fun Pago.aEntidad() = PagoEntity(
     aQuienId = aQuienId,
     importeCentimos = importeCentimos,
     fechaMillis = fechaMillis,
-    nota = nota
+    nota = nota,
+    version = version
 )
 
 private fun ids(bruto: String): Set<String> =

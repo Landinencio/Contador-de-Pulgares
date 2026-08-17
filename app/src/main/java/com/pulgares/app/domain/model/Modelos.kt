@@ -88,7 +88,13 @@ data class Gasto(
     val nota: String? = null,
     /** Ids de quien puso pulgar arriba y pulgar abajo. */
     val pulgaresArriba: Set<String> = emptySet(),
-    val pulgaresAbajo: Set<String> = emptySet()
+    val pulgaresAbajo: Set<String> = emptySet(),
+    /**
+     * Millis del ultimo cambio. Solo sirve para sincronizar entre moviles: gana
+     * la version mas alta, asi que una copia vieja que llega tarde no pisa una
+     * edicion mas nueva. En un solo movil da igual.
+     */
+    val version: Long = 0L
 ) {
     val saldoPulgares: Int get() = pulgaresArriba.size - pulgaresAbajo.size
 
@@ -146,7 +152,9 @@ data class Pago(
     val aQuienId: String,
     val importeCentimos: Long,
     val fechaMillis: Long,
-    val nota: String? = null
+    val nota: String? = null,
+    /** Ver [Gasto.version]. */
+    val version: Long = 0L
 )
 
 /** Un grupo de gente que se debe cosas. */
@@ -156,9 +164,16 @@ data class Grupo(
     val emoji: String = "👥",
     val colegas: List<Colega> = emptyList(),
     val creadoMillis: Long = 0L,
-    /** Codigo corto para compartir el grupo si se activa la sincronizacion. */
-    val codigo: String? = null
+    /** Codigo corto para compartir el grupo, cuando esta compartido. */
+    val codigo: String? = null,
+    /** Id del grupo en la nube. null = solo vive en este movil. */
+    val remotoId: String? = null,
+    /** Millis del ultimo cambio de nombre o emoji (arbitraje al sincronizar). */
+    val version: Long = 0L
 ) {
+    /** ¿Este grupo lo comparten varios moviles? */
+    val compartido: Boolean get() = remotoId != null
+
     fun colega(id: String): Colega? = colegas.firstOrNull { it.id == id }
 
     fun nombreDe(id: String): String = colega(id)?.nombre ?: "Un fantasma"

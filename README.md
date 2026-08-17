@@ -41,6 +41,8 @@ dinero.
 - **Creador de monigotes** con más de **2,3 billones** de combinaciones, para ti y
   para cada colega del grupo.
 - **Confeti** cuando el grupo se queda a cero. Solo entonces.
+- **Compartir el grupo** con un código de seis letras: quien lo teclee ve los
+  mismos gastos. Sin registro, sin correo y sin cuentas.
 
 ### Las frases
 
@@ -137,8 +139,8 @@ Necesita JDK 17 y el SDK de Android (plataforma 35).
 JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleDebug
 ```
 
-Los tests (55, sobre dinero, pesetas, reparto, settlement, frases, avatares y una
-tanda de regresiones: un test por cada fallo que ya se coló una vez):
+Los tests (63, sobre dinero, pesetas, reparto, settlement, frases, avatares,
+sincronización y una tanda de regresiones: un test por cada fallo que ya se coló una vez):
 
 ```bash
 JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew testDebugUnitTest
@@ -183,15 +185,41 @@ Los dos son un port, no la app: si cambias la anatomía en
 [`avatar/Cuerpo.kt`](app/src/main/java/com/pulgares/app/avatar/Cuerpo.kt) hay que
 actualizarlos a mano para que sigan sirviendo.
 
+## Compartir un grupo
+
+Un grupo puede vivir solo en tu móvil (por defecto) o compartirse. Al compartirlo
+sale un **código de seis caracteres** que se manda por WhatsApp; quien lo teclee
+entra y desde entonces los dos móviles ven los mismos gastos. Sin registro, sin
+correo y sin contraseñas: el código *es* la invitación.
+
+Detalles que importan:
+
+- El alfabeto tiene 31 símbolos, sin `0`, `O`, `1`, `I` ni `L`, que son los que se
+  confunden al dictar el código en voz alta. Salen 887 millones de combinaciones.
+- **Unirse va en dos pasos** para no duplicar gente: con el código a secas la app
+  enseña quién hay en el grupo y pregunta «¿cuál eres tú?», y solo entonces ese
+  móvil queda asociado a ese colega. Si alguien ya lo cogió, lo dice.
+- **El código se puede cambiar.** Sin eso, a quien echas del grupo le basta con
+  haberlo apuntado para volver a entrar.
+- Al crear un grupo compartido sale un **código de recuperación** que solo ve quien
+  lo creó: es lo único que devuelve el mando del grupo si cambias de móvil.
+- **Fusionar no necesita resolver conflictos**: los gastos y los bizums llevan su
+  identificador desde que se crean y son hechos, no estado, así que juntar dos
+  móviles es la unión por identificador. Lo único que se edita (el concepto de un
+  gasto, el nombre del grupo) lleva `version`, y gana la más alta: una copia vieja
+  que llega tarde se ignora en vez de retroceder el estado.
+
+El backend son una Lambda y una tabla DynamoDB en la cuenta AWS personal, con el
+handler en `NininosFit/backend/pulgares/handler.py` y su Terraform en
+`NininosFit/infra/pulgares.tf`. El diseño completo está en
+[`docs/SINCRONIZACION.md`](docs/SINCRONIZACION.md).
+
+**Sin token, nada de esto existe**: `SYNC_TOKEN` llega por secreto de CI, y si
+falta, la app oculta el botón de compartir y funciona igual, entera y local.
+
 ## Lo que falta
 
-- [ ] **Compartir grupo entre móviles**. Ahora cada móvil lleva sus cuentas y los
-      colegas son nombres, no cuentas de nadie. El diseño completo está en
-      [`docs/SINCRONIZACION.md`](docs/SINCRONIZACION.md): código de seis
-      caracteres, tabla DynamoDB con índice *sparse* y fusión por identificador
-      (que no necesita resolver conflictos, porque los gastos son inmutables y ya
-      llevan UUID). La app tiene los `BuildConfig` (`SYNC_URL`, `SYNC_TOKEN`)
-      preparados y se comporta bien sin ellos.
 - [ ] **Notificaciones de verdad** para el botón de "dar un toque": hoy el aviso
-      se queda en el móvil del que lo manda.
+      se queda en el móvil del que lo manda. Requiere push (Firebase) o un
+      `WorkManager` que mire cada cierto rato.
 - [ ] Exportar a CSV y gastos recurrentes (el alquiler, Netflix…).

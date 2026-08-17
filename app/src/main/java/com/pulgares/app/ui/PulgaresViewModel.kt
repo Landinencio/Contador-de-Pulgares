@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.pulgares.app.avatar.Monigote
 import com.pulgares.app.data.EstadoGrupo
 import com.pulgares.app.data.Repositorio
+import com.pulgares.app.data.RepositorioNube
+import com.pulgares.app.data.red.ClienteNube
+import com.pulgares.app.data.red.Sincronizador
 import com.pulgares.app.data.ResumenGrupo
 import com.pulgares.app.domain.model.Categoria
 import com.pulgares.app.domain.model.Colega
@@ -26,7 +29,100 @@ import kotlinx.coroutines.launch
  * (los grupos y el avatar propio), asi que separarlo solo anadiria ceremonia.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class PulgaresViewModel(private val repo: Repositorio) : ViewModel() {
+class PulgaresViewModel(
+    private val repo: Repositorio,
+    private val nube: RepositorioNube? = null
+) : ViewModel() {
+
+    /** ¿Esta build lleva sincronización? Sin token, la app es 100% local. */
+    val nubeDisponible: Boolean get() = nube?.disponible == true
+
+    private val _sincronizando = MutableStateFlow(false)
+    val sincronizando: StateFlow<Boolean> = _sincronizando
+
+    /** Lo que se está mirando antes de unirse a un grupo ajeno. */
+    private val _grupoAlQueUnirse = MutableStateFlow<Sincronizador.GrupoRemoto?>(null)
+    val grupoAlQueUnirse: StateFlow<Sincronizador.GrupoRemoto?> = _grupoAlQueUnirse
+
+    fun olvidaGrupoAlQueUnirse() {
+        _grupoAlQueUnirse.value = null
+    }
+
+    /**
+     * Envuelve una operación de red: enciende el indicador, y si algo falla lo
+     * cuenta en castellano en vez de dejar la pantalla colgada.
+     */
+    private fun enLaNube(
+        onError: (String) -> Unit,
+        bloque: suspend (RepositorioNube) -> Unit
+    ) {
+        val destino = nube
+        if (destino == null || !destino.disponible) {
+            onError("Esta versión de la app no lleva sincronización")
+            return
+        }
+        viewModelScope.launch {
+            _sincronizando.value = true
+            try {
+                bloque(destino)
+            } catch (error: ClienteNube.ErrorNube) {
+                onError(error.message ?: "No ha salido bien")
+            } catch (error: Exception) {
+                onError("Algo ha ido mal al hablar con la nube")
+            } finally {
+                _sincronizando.value = false
+            }
+        }
+    }
+
+    /** Sube el grupo por primera vez y devuelve su código de invitación. */
+    fun comparte(grupoId: String, onHecho: (String) -> Unit, onError: (String) -> Unit) {
+        enLaNube(onError) { destino ->
+            val resultado = destino.comparte(grupoId)
+            onHecho(resultado.codigo)
+        }
+    }
+
+    fun sincroniza(grupoId: String, onHecho: (RepositorioNube.Resultado) -> Unit, onError: (String) -> Unit) {
+        enLaNube(onError) { destino -> onHecho(destino.sincroniza(grupoId)) }
+    }
+
+    fun rotaCodigo(grupoId: String, onHecho: (String) -> Unit, onError: (String) -> Unit) {
+        enLaNube(onError) { destino -> onHecho(destino.rotaCodigo(grupoId)) }
+    }
+
+    fun dejaDeCompartir(grupoId: String, onHecho: () -> Unit, onError: (String) -> Unit) {
+        enLaNube(onError) { destino ->
+            destino.dejaDeCompartir(grupoId)
+            onHecho()
+        }
+    }
+
+    fun codigoDeRecuperacion(grupoId: String, onHecho: (String?) -> Unit) {
+        viewModelScope.launch { onHecho(nube?.codigoDeRecuperacion(grupoId)) }
+    }
+
+    /** Primer paso de unirse: mirar qué hay detrás del código. */
+    fun miraCodigo(codigo: String, onError: (String) -> Unit) {
+        enLaNube(onError) { destino ->
+            _grupoAlQueUnirse.value = destino.mira(codigo)
+        }
+    }
+
+    /** Segundo paso: entrar como un colega concreto (o como uno nuevo). */
+    fun entra(
+        codigo: String,
+        colegaId: String?,
+        miNombre: String?,
+        onHecho: (String) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        enLaNube(onError) { destino ->
+            val grupoId = destino.entra(codigo, colegaId, miNombre)
+            _grupoAlQueUnirse.value = null
+            onHecho(grupoId)
+        }
+    }
 
     val grupos: StateFlow<List<ResumenGrupo>> = repo.observaResumenGrupos()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -162,9 +258,12 @@ class PulgaresViewModel(private val repo: Repositorio) : ViewModel() {
         viewModelScope.launch { repo.guardaAvatarDe(colegaId, monigote.serializa()) }
     }
 
-    class Fabrica(private val repo: Repositorio) : ViewModelProvider.Factory {
+    class Fabrica(
+        private val repo: Repositorio,
+        private val nube: RepositorioNube? = null
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            PulgaresViewModel(repo) as T
+            PulgaresViewModel(repo, nube) as T
     }
 }

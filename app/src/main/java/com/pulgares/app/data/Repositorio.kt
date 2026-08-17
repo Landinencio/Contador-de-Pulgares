@@ -98,6 +98,25 @@ class Repositorio(private val bd: BaseDatos) {
     }
 
     /**
+     * El estado del grupo leido de una vez, sin flujos. Lo usa la sincronizacion,
+     * que necesita una foto fija para subir y no un flujo que cambia debajo.
+     */
+    suspend fun grupoDeUnaVez(grupoId: String): EstadoGrupo? {
+        val grupo = bd.grupos().grupoDeUnaVez(grupoId) ?: return null
+        val colegas = bd.grupos().colegasDeUnGrupo(grupoId).map { it.aDominio() }
+        val gastos = bd.gastos().gastosDeUnaVez(grupoId).map { it.aDominio() }
+        val pagos = bd.pagos().pagosDeUnaVez(grupoId).map { it.aDominio() }
+        val saldos = Cuentas.saldos(colegas, gastos, pagos)
+        return EstadoGrupo(
+            grupo = grupo.aDominio(colegas),
+            gastos = gastos,
+            pagos = pagos,
+            saldos = saldos,
+            plan = Cuentas.planDePagos(saldos)
+        )
+    }
+
+    /**
      * Mi avatar. Todos los "yo" de todos los grupos comparten monigote, asi que
      * vale con el primero que tenga uno; se ordena por grupo para que la eleccion
      * sea siempre la misma y no dependa de como le apetezca devolver las filas a

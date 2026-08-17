@@ -1,0 +1,304 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 4,
+    "identityHash": "3e392eae646c83544b3da329fbbc1bbc",
+    "entities": [
+      {
+        "tableName": "grupos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `nombre` TEXT NOT NULL, `emoji` TEXT NOT NULL, `creadoMillis` INTEGER NOT NULL, `codigo` TEXT, `remotoId` TEXT, `version` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "emoji",
+            "columnName": "emoji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "creadoMillis",
+            "columnName": "creadoMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "codigo",
+            "columnName": "codigo",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "remotoId",
+            "columnName": "remotoId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "colegas",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `grupoId` TEXT NOT NULL, `nombre` TEXT NOT NULL, `avatar` TEXT, `soyYo` INTEGER NOT NULL, `orden` INTEGER NOT NULL, `activo` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "grupoId",
+            "columnName": "grupoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avatar",
+            "columnName": "avatar",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "soyYo",
+            "columnName": "soyYo",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "orden",
+            "columnName": "orden",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activo",
+            "columnName": "activo",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_colegas_grupoId",
+            "unique": false,
+            "columnNames": [
+              "grupoId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_colegas_grupoId` ON `${TABLE_NAME}` (`grupoId`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "gastos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `grupoId` TEXT NOT NULL, `concepto` TEXT NOT NULL, `importeCentimos` INTEGER NOT NULL, `pagadorId` TEXT NOT NULL, `fechaMillis` INTEGER NOT NULL, `categoria` TEXT NOT NULL, `reparto` TEXT NOT NULL, `nota` TEXT, `pulgaresArriba` TEXT NOT NULL, `pulgaresAbajo` TEXT NOT NULL, `version` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "grupoId",
+            "columnName": "grupoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "concepto",
+            "columnName": "concepto",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "importeCentimos",
+            "columnName": "importeCentimos",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pagadorId",
+            "columnName": "pagadorId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaMillis",
+            "columnName": "fechaMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoria",
+            "columnName": "categoria",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reparto",
+            "columnName": "reparto",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nota",
+            "columnName": "nota",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "pulgaresArriba",
+            "columnName": "pulgaresArriba",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pulgaresAbajo",
+            "columnName": "pulgaresAbajo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_gastos_grupoId",
+            "unique": false,
+            "columnNames": [
+              "grupoId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_gastos_grupoId` ON `${TABLE_NAME}` (`grupoId`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "pagos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `grupoId` TEXT NOT NULL, `deQuienId` TEXT NOT NULL, `aQuienId` TEXT NOT NULL, `importeCentimos` INTEGER NOT NULL, `fechaMillis` INTEGER NOT NULL, `nota` TEXT, `version` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "grupoId",
+            "columnName": "grupoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deQuienId",
+            "columnName": "deQuienId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "aQuienId",
+            "columnName": "aQuienId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "importeCentimos",
+            "columnName": "importeCentimos",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaMillis",
+            "columnName": "fechaMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nota",
+            "columnName": "nota",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_pagos_grupoId",
+            "unique": false,
+            "columnNames": [
+              "grupoId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_pagos_grupoId` ON `${TABLE_NAME}` (`grupoId`)"
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3e392eae646c83544b3da329fbbc1bbc')"
+    ]
+  }
+}
