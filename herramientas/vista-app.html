@@ -329,7 +329,7 @@ footer {
       </p>
       <p class="entradilla medida" style="font-size:16px">
         Android nativo (Kotlin + Compose), todo en el móvil. Cada importe va
-        también en pesetas. <b class="gordo">47 tests</b> en verde y APK que ya se
+        también en pesetas. <b class="gordo">55 tests</b> en verde y APK que ya se
         instala.
       </p>
     </div>
@@ -728,10 +728,21 @@ footer {
     <p class="rotulo">Segunda vuelta</p>
     <h2>Lo que salió al repasarla</h2>
     <p class="sub medida">
-      Con la app ya funcionando, un repaso a fondo destapó cosas que habrían dolido
-      de verdad en un grupo real.
+      Con la app ya funcionando, un repaso a fondo destapó <b class="gordo">16
+      fallos</b>. Estos cuatro habrían dolido de verdad en un grupo real; los demás
+      están arreglados también, y cada uno tiene ya su test para que no vuelva.
     </p>
     <div class="tripas">
+      <article class="pega" style="background:var(--rojo-suave)">
+        <h3>Editar un gasto borraba sus votos</h3>
+        <p>
+          El peor de todos. Corregir una tilde del concepto se llevaba por delante
+          los pulgares del gasto y le ponía la fecha de hoy: el gasto saltaba al
+          principio de la lista y la deuda volvía a contar desde cero, así que el
+          moroso salía del salón de la fama de rebote. Ahora fecha y votos se
+          quedan donde estaban.
+        </p>
+      </article>
       <article class="pega" style="background:var(--rojo-suave)">
         <h3>La papelera no preguntaba</h3>
         <p>
@@ -760,6 +771,17 @@ footer {
         </p>
       </article>
       <article class="pega">
+        <h3>«Un fantasma debe 15 €»</h3>
+        <p>
+          Al sacar a alguien del grupo se borraba su ficha, y sus gastos se quedaban
+          con un identificador sin nombre: eso es lo que el plan de pagos acababa
+          mostrando. Y al editar uno de esos gastos, su parte se repartía entre los
+          que quedaban — cambiando cuentas que el grupo ya había cerrado, justo lo
+          contrario de lo que prometía el aviso. Ahora quien se va se marca, no se
+          borra, y se puede readmitir.
+        </p>
+      </article>
+      <article class="pega">
         <h3>Y un bizum era para siempre</h3>
         <p>
           Apuntar un pago por error dejaba las cuentas mal sin remedio; ahora se
@@ -769,6 +791,14 @@ footer {
         </p>
       </article>
     </div>
+    <p class="sub medida" style="margin-top:18px">
+      Y tres del propio dinero, de los que solo salen buscándolos: teclear veinte
+      dígitos en el importe daba la vuelta al contador interno y guardaba otra
+      cantidad; las pesetas se volvían negativas debajo de euros positivos; y un
+      reparto con el mismo colega repetido se comía la diferencia. Ninguno se podía
+      provocar por accidente, pero los tres rompían la única regla que esta app no
+      puede romper: que las cuentas sumen cero.
+    </p>
   </section>
 
   <section>
