@@ -30,6 +30,12 @@ jobs:
           chmod +x gradlew
           ./gradlew testDebugUnitTest --no-daemon --stacktrace
 
+      # Los tests de migración de Room necesitan un dispositivo; esto hace la
+      # misma comprobación con SQLite a secas contra los esquemas exportados, y
+      # caza una migración incompleta antes de que reviente en un móvil con datos.
+      - name: Comprobar las migraciones de la base
+        run: python3 herramientas/comprueba-migraciones.py
+
       - name: Compilar los APK
         run: ./gradlew assembleDebug assembleRelease -PappVersionCode=$GITHUB_RUN_NUMBER --no-daemon --stacktrace
 

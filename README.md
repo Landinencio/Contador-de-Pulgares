@@ -155,6 +155,20 @@ desinstalar. Sirve para repartir la app entre colegas y **para nada más**: si a
 día esto va a una tienda, hay que generar una clave de verdad y guardarla fuera del
 repositorio.
 
+Y una comprobación que el CI también ejecuta:
+
+```bash
+python3 herramientas/comprueba-migraciones.py
+```
+
+Los tests de migración de Room necesitan un dispositivo Android y aquí no hay
+emulador, así que ese script hace la misma comprobación con SQLite a secas: crea la
+base de la versión vieja, le aplica las migraciones de la app y compara columna por
+columna con el esquema que Room exporta a `app/schemas/`. Si una migración se
+olvidara de algo, la app reventaría al arrancar sobre una base ya existente; esto lo
+caza en un segundo. **Al añadir una migración a `BaseDatos.kt`, añádela también a
+`MIGRACIONES` en el script.**
+
 ### Ver el monigote sin emulador
 
 Este Mac no tiene emulador de Android instalado, así que en `herramientas/` hay dos
