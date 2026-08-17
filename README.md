@@ -138,8 +138,16 @@ Los tests (47, sobre dinero, pesetas, reparto, settlement, frases y avatares):
 JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew testDebugUnitTest
 ```
 
-El CI de GitHub Actions compila el APK en cada push y lo publica como release
-`test-apk`, igual que el resto de apps de casa.
+El CI de GitHub Actions compila los APK en cada push y los publica en la release
+`test-apk`: el de release (15 MB, el que conviene instalar) y el de debug (22 MB).
+Los dos van firmados con la misma clave, así que se actualizan el uno sobre el otro.
+
+**La clave de firma está en el repo a propósito** (`app/ci-debug.keystore`, con la
+contraseña a la vista en `build.gradle.kts`). Es lo que permite que cualquier build
+—la tuya o la del CI— genere un APK que se instala encima del anterior sin
+desinstalar. Sirve para repartir la app entre colegas y **para nada más**: si algún
+día esto va a una tienda, hay que generar una clave de verdad y guardarla fuera del
+repositorio.
 
 ### Ver el monigote sin emulador
 
