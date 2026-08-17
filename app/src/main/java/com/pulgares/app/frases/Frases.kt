@@ -307,12 +307,15 @@ object Frases {
         cuanto: String = "",
         que: String = "",
         dias: Int = 0,
-        semilla: Long = 0L,
+        /** null = una frase al azar. Con valor, siempre sale la misma. */
+        semilla: Long? = null,
         /** Si se pasa, de aqui salen tanto {cuanto} como {pesetas}. */
         centimos: Long? = null
     ): String {
         val lista = catalogo(momento)
-        val indice = if (semilla == 0L) {
+        // Antes el centinela era el 0, asi que un hashCode que valiese justo 0
+        // hacia bailar esa frase en cada recomposicion.
+        val indice = if (semilla == null) {
             Random.nextInt(lista.size)
         } else {
             ((semilla % lista.size) + lista.size).toInt() % lista.size

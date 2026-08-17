@@ -150,7 +150,10 @@ fun DetalleGrupoScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            items(estado.plan) { transferencia ->
+            items(
+                estado.plan,
+                key = { "${it.deQuienId}-${it.aQuienId}" }
+            ) { transferencia ->
                 FilaTransferencia(
                     transferencia = transferencia,
                     estado = estado,

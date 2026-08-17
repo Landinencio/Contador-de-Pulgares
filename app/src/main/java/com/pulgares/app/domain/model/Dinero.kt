@@ -120,7 +120,7 @@ object Dinero {
         require(cuantos > 0) { "No se puede repartir entre cero personas" }
         val base = total / cuantos
         val sobran = (total % cuantos).toInt()
-        val rotacion = if (cuantos == 0) 0 else ((desde % cuantos) + cuantos) % cuantos
+        val rotacion = ((desde % cuantos) + cuantos) % cuantos
         return List(cuantos) { indice ->
             // La posicion relativa respecto al arranque de la rotacion decide
             // si a esta parte le cae uno de los centimos sueltos.

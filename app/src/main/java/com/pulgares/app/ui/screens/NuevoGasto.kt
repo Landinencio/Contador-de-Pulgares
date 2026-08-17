@@ -120,7 +120,7 @@ fun NuevoGastoScreen(
     }
 
     val importeCentimos = Dinero.parse(importeTexto) ?: 0L
-    val reparto = construyeReparto(modo, colegas, marcados, partes, exactos, importeCentimos)
+    val reparto = construyeReparto(modo, colegas, marcados, partes, exactos)
     val sumaExactos = if (modo == ModoReparto.EXACTO) {
         colegas.sumOf { Dinero.parse(exactos[it.id] ?: "") ?: 0L }
     } else {
@@ -477,8 +477,7 @@ private fun construyeReparto(
     colegas: List<Colega>,
     marcados: Map<String, Boolean>,
     partes: Map<String, Int>,
-    exactos: Map<String, String>,
-    importe: Long
+    exactos: Map<String, String>
 ): Reparto = when (modo) {
     ModoReparto.ESCOTE -> Reparto.Escote(
         colegas.map { it.id }.filter { marcados[it] != false }

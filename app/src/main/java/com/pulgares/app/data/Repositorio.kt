@@ -97,9 +97,18 @@ class Repositorio(private val bd: BaseDatos) {
         )
     }
 
-    /** Mi avatar: se guarda en el colega marcado como "soyYo" de cualquier grupo. */
+    /**
+     * Mi avatar. Todos los "yo" de todos los grupos comparten monigote, asi que
+     * vale con el primero que tenga uno; se ordena por grupo para que la eleccion
+     * sea siempre la misma y no dependa de como le apetezca devolver las filas a
+     * SQLite.
+     */
     fun observaMiAvatar(): Flow<String?> = bd.grupos().observaTodosLosColegas()
-        .map { colegas -> colegas.firstOrNull { it.soyYo && it.avatar != null }?.avatar }
+        .map { colegas ->
+            colegas.filter { it.soyYo && it.avatar != null }
+                .minByOrNull { it.grupoId }
+                ?.avatar
+        }
 
     suspend fun creaGrupo(nombre: String, emoji: String, nombresColegas: List<String>, miNombre: String): String {
         val grupoId = nuevoId()
@@ -191,9 +200,18 @@ class Repositorio(private val bd: BaseDatos) {
         bd.grupos().guardaColegas(mios.map { it.copy(avatar = avatar) })
     }
 
+    /**
+     * Cambia el monigote de un colega. Si resulta que ese colega soy yo, se
+     * cambia en todos los grupos: si no, quedarian dos "yo" con cara distinta y
+     * la portada mostraria uno u otro sin criterio.
+     */
     suspend fun guardaAvatarDe(colegaId: String, avatar: String) {
         val colega = colegasActuales().firstOrNull { it.id == colegaId } ?: return
-        bd.grupos().guardaColegas(listOf(colega.copy(avatar = avatar)))
+        if (colega.soyYo) {
+            guardaMiAvatar(avatar)
+        } else {
+            bd.grupos().guardaColegas(listOf(colega.copy(avatar = avatar)))
+        }
     }
 
     private suspend fun colegasActuales() = bd.grupos().colegasDeUnaVez()
