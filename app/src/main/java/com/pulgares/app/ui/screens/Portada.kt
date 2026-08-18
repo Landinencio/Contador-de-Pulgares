@@ -332,10 +332,13 @@ private fun TarjetaCobrador(
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
+                // El fondo de esta tarjeta es SIEMPRE claro (mostaza o crema),
+                // asi que la tinta va fija: con el color del tema, en modo
+                // oscuro el titulo salia blanco sobre amarillo (invisible).
                 Text(
                     text = "El Cobrador del Frac",
                     style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = Paleta.Tinta
                 )
                 Text(
                     text = if (contratado) {
@@ -346,7 +349,7 @@ private fun TarjetaCobrador(
                             "con la elegancia de un caballero y la paciencia de un acreedor."
                     },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Paleta.TintaSuave
                 )
                 Spacer(Modifier.height(10.dp))
                 BotonPegatina(

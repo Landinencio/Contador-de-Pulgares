@@ -1,6 +1,7 @@
 package com.pulgares.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 
 /**
  * Paleta del Contador de Pulgares, sacada del monigote rosa que da nombre a
@@ -41,6 +42,15 @@ object Paleta {
     val NocheTarjeta = Color(0xFF272130)
     val NocheTinta = Color(0xFFF6EFE6)
     val NocheTintaSuave = Color(0xFFB3A9BD)
+
+    /**
+     * La tinta que se lee sobre [fondo]: negra en fondos claros, papel en
+     * oscuros. Para textos que van sobre un color FIJO (no del tema); usar el
+     * color del tema sobre un fondo fijo es la receta del texto invisible en
+     * modo oscuro.
+     */
+    fun textoSobre(fondo: Color): Color =
+        if (fondo.luminance() > 0.4f) Tinta else Papel
 
     /** Colorines de las categorias de gasto, en el orden del enum. */
     val categorias = listOf(

@@ -187,6 +187,7 @@ fun Importe(
     modifier: Modifier = Modifier,
     estilo: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.titleLarge,
     color: Color = MaterialTheme.colorScheme.onSurface,
+    colorPesetas: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     alineadoDerecha: Boolean = false,
     conSigno: Boolean = false
 ) {
@@ -203,7 +204,7 @@ fun Importe(
         Text(
             text = Dinero.formateaPesetas(centimos),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = colorPesetas
         )
     }
 }

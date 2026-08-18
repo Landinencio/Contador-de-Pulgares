@@ -343,6 +343,10 @@ private fun FilaTransferencia(
     onPagar: () -> Unit
 ) {
     val grupo = estado.grupo
+    // El fondo rojo claro es fijo, asi que su tinta tambien: con la del tema,
+    // en modo oscuro el texto salia blanco sobre rojo clarito.
+    val tinta = if (soyElQuePaga) Paleta.Tinta else MaterialTheme.colorScheme.onSurface
+    val tintaSuave = if (soyElQuePaga) Paleta.TintaSuave else MaterialTheme.colorScheme.onSurfaceVariant
     Pegatina(
         modifier = Modifier.fillMaxWidth(),
         color = if (soyElQuePaga) Paleta.RojoDeudaSuave else MaterialTheme.colorScheme.surface,
@@ -368,9 +372,13 @@ private fun FilaTransferencia(
                 Text(
                     text = "${grupo.nombreDe(transferencia.deQuienId)} debe a ${grupo.nombreDe(transferencia.aQuienId)}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = tinta
                 )
-                Importe(centimos = transferencia.importeCentimos)
+                Importe(
+                    centimos = transferencia.importeCentimos,
+                    color = tinta,
+                    colorPesetas = tintaSuave
+                )
             }
             BotonRedondo(
                 contenido = if (soyElQuePaga) "Pagar" else "Cobrado",

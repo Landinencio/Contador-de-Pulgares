@@ -201,8 +201,9 @@ fun NuevoGastoScreen(
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(Categoria.entries.toList()) { cat ->
                     val elegida = cat == categoria
+                    val fondo = Paleta.categorias[cat.ordinal]
                     Pegatina(
-                        color = if (elegida) Paleta.categorias[cat.ordinal] else MaterialTheme.colorScheme.surface,
+                        color = if (elegida) fondo else MaterialTheme.colorScheme.surface,
                         radio = 14.dp,
                         sombra = if (elegida) 3.dp else 2.dp,
                         onClick = { categoria = cat }
@@ -215,7 +216,13 @@ fun NuevoGastoScreen(
                             Text(
                                 text = cat.etiqueta,
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurface,
+                                // Elegida: tinta segun el color de la ficha, que es
+                                // fijo. Sin elegir, la del tema sobre el tema.
+                                color = if (elegida) {
+                                    Paleta.textoSobre(fondo)
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
                                 fontWeight = if (elegida) FontWeight.ExtraBold else FontWeight.Normal
                             )
                         }

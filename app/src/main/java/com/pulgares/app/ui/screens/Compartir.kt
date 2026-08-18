@@ -54,6 +54,12 @@ fun BloqueCompartir(
     var rotando by remember { mutableStateOf(false) }
     var dejando by remember { mutableStateOf(false) }
 
+    // Sobre el fondo fijo verde claro (grupo compartido) la tinta va fija;
+    // sobre la superficie del tema, la del tema. Mezclarlas dejaba el titulo
+    // blanco sobre verde clarito en modo oscuro.
+    val tinta = if (grupo.compartido) Paleta.Tinta else MaterialTheme.colorScheme.onSurface
+    val tintaSuave = if (grupo.compartido) Paleta.TintaSuave else MaterialTheme.colorScheme.onSurfaceVariant
+
     Pegatina(
         modifier = Modifier.fillMaxWidth(),
         color = if (grupo.compartido) Paleta.VerdePazSuave else MaterialTheme.colorScheme.surface,
@@ -63,7 +69,7 @@ fun BloqueCompartir(
             Text(
                 text = if (grupo.compartido) "Grupo compartido" else "Compartir el grupo",
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                color = tinta
             )
 
             if (!disponible) {
@@ -71,7 +77,7 @@ fun BloqueCompartir(
                     text = "Esta versión de la app no lleva sincronización, así que las " +
                         "cuentas se quedan en este móvil.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = tintaSuave,
                     modifier = Modifier.padding(top = 6.dp)
                 )
                 return@Column
@@ -82,7 +88,7 @@ fun BloqueCompartir(
                     text = "Sube el grupo y sale un código de seis letras. Quien lo teclee en " +
                         "su móvil verá los mismos gastos que tú.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = tintaSuave,
                     modifier = Modifier.padding(top = 6.dp)
                 )
                 Spacer(Modifier.height(12.dp))
@@ -100,7 +106,7 @@ fun BloqueCompartir(
             Text(
                 text = "Dale este código a quien quieras meter en el grupo:",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = tintaSuave,
                 modifier = Modifier.padding(top = 6.dp)
             )
             Spacer(Modifier.height(10.dp))
@@ -125,7 +131,7 @@ fun BloqueCompartir(
             Text(
                 text = "Toca el código para copiarlo.",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = tintaSuave,
                 modifier = Modifier.padding(top = 4.dp)
             )
 
@@ -163,13 +169,13 @@ fun BloqueCompartir(
                 Text(
                     text = "Código de recuperación",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = tinta
                 )
                 Text(
                     text = "Guárdalo fuera del móvil. Es lo único que te devuelve el mando " +
                         "del grupo si cambias de teléfono.",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = tintaSuave
                 )
                 Spacer(Modifier.height(6.dp))
                 Chapa(texto = codigoRecuperacion, color = Paleta.MostazaSuave)
