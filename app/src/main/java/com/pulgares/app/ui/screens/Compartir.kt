@@ -217,20 +217,20 @@ fun BloqueCompartir(
 }
 
 /**
- * Unirse a un grupo con un código. Dos pasos, como en el backend: primero se mira
- * qué hay detrás del código y luego se dice quién eres, para no acabar con dos
- * "Ana" en la lista.
+ * Pedir entrar en un grupo con un código. Un solo paso: la petición viaja con el
+ * nombre y el monigote del perfil, y el dueño la aprueba desde su móvil.
  */
 @Composable
 fun DialogoUnirse(
-    mirado: Sincronizador.GrupoRemoto?,
+    miNombre: String,
+    miAvatar: com.pulgares.app.avatar.Monigote,
     sincronizando: Boolean,
-    onMirar: (String) -> Unit,
-    onEntrar: (codigo: String, colegaId: String?, nombre: String?) -> Unit,
+    /** null = aún no se ha pedido; texto = nombre del grupo al que se pidió. */
+    pedidaA: String?,
+    onPedir: (String) -> Unit,
     onCerrar: () -> Unit
 ) {
     var codigo by rememberSaveable { mutableStateOf("") }
-    var nombreNuevo by rememberSaveable { mutableStateOf("") }
 
     Dialog(onDismissRequest = onCerrar) {
         Pegatina(
@@ -241,19 +241,35 @@ fun DialogoUnirse(
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(text = "🔗", style = MaterialTheme.typography.displayMedium)
                 Spacer(Modifier.height(4.dp))
-                Text(
-                    text = if (mirado == null) "Unirse a un grupo" else mirado.nombre,
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
 
-                if (mirado == null) {
+                if (pedidaA == null) {
                     Text(
-                        text = "Teclea el código que te han pasado, o pega el mensaje entero.",
+                        text = "Unirse a un grupo",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Teclea el código que te han pasado. La petición le llega " +
+                            "a quien creó el grupo, con tu nombre y tu monigote:",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 6.dp)
                     )
+                    Spacer(Modifier.height(10.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AvatarMonigote(
+                            monigote = miAvatar,
+                            tamano = 44,
+                            conFondo = false,
+                            descripcion = "Tu monigote"
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = miNombre,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = codigo,
@@ -273,32 +289,157 @@ fun DialogoUnirse(
                             modifier = Modifier.weight(1f)
                         )
                         BotonPegatina(
-                            texto = if (sincronizando) "Buscando…" else "Buscar",
+                            texto = if (sincronizando) "Pidiendo…" else "Pedir entrar",
                             habilitado = codigoValido(codigo) && !sincronizando,
-                            onClick = { onMirar(limpiaCodigo(codigo)) },
+                            onClick = { onPedir(limpiaCodigo(codigo)) },
                             modifier = Modifier.weight(1f)
                         )
                     }
                 } else {
-                    // ---- ¿quién eres? ----
-                    val libres = mirado.colegas.filter { it.id in mirado.colegasLibres }
+                    // ---- petición enviada: ahora manda la paciencia ----
                     Text(
-                        text = if (libres.isEmpty()) {
-                            "Nadie libre en la lista: entra como alguien nuevo."
-                        } else {
-                            "¿Cuál eres tú?"
-                        },
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = "¡Pedido!",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Tu petición para entrar en «$pedidaA» ya está en el móvil " +
+                            "de quien lo creó. En cuanto te apruebe, el grupo aparecerá " +
+                            "en tu portada.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    BotonPegatina(
+                        texto = "Entendido",
+                        onClick = onCerrar,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Las peticiones de entrar que le llegan al dueño: se aprueban (a colega nuevo o
+ * heredando uno creado a mano, con sus gastos) o se rechazan.
+ */
+@Composable
+fun BloqueSolicitudes(
+    solicitudes: List<Sincronizador.Solicitud>,
+    colegasLibres: List<com.pulgares.app.domain.model.Colega>,
+    sincronizando: Boolean,
+    onAprobar: (uid: String, colegaId: String?) -> Unit,
+    onRechazar: (uid: String) -> Unit
+) {
+    if (solicitudes.isEmpty()) return
+    var asignando by remember { mutableStateOf<Sincronizador.Solicitud?>(null) }
+
+    Pegatina(
+        modifier = Modifier.fillMaxWidth(),
+        color = Paleta.MostazaSuave,
+        sombra = 4.dp
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = if (solicitudes.size == 1) {
+                    "Alguien quiere entrar 🛎️"
+                } else {
+                    "${solicitudes.size} personas quieren entrar 🛎️"
+                },
+                style = MaterialTheme.typography.titleLarge,
+                color = Paleta.Tinta
+            )
+
+            solicitudes.forEach { solicitud ->
+                Spacer(Modifier.height(10.dp))
+                Pegatina(modifier = Modifier.fillMaxWidth(), color = Paleta.Papel, sombra = 2.dp) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AvatarMonigote(
+                            monigote = com.pulgares.app.avatar.Monigote.parse(solicitud.avatar)
+                                ?: com.pulgares.app.avatar.Monigote.desdeSemilla(solicitud.uid),
+                            tamano = 44,
+                            descripcion = "Monigote de ${solicitud.nombre}"
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = solicitud.nombre,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Paleta.Tinta,
+                            modifier = Modifier.weight(1f)
+                        )
+                        BotonRedondo(
+                            contenido = "✓",
+                            descripcion = "Dejar entrar a ${solicitud.nombre}",
+                            color = Paleta.VerdePaz,
+                            sombra = 2.dp,
+                            onClick = {
+                                if (colegasLibres.isEmpty()) {
+                                    onAprobar(solicitud.uid, null)
+                                } else {
+                                    asignando = solicitud
+                                }
+                            }
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        BotonRedondo(
+                            contenido = "✕",
+                            descripcion = "Rechazar a ${solicitud.nombre}",
+                            color = Paleta.RojoDeudaSuave,
+                            sombra = 2.dp,
+                            onClick = { onRechazar(solicitud.uid) }
+                        )
+                    }
+                }
+            }
+
+            if (sincronizando) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Hablando con la nube…",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Paleta.TintaSuave
+                )
+            }
+        }
+    }
+
+    // ---- ¿entra como alguien de la lista o como colega nuevo? ----
+    val candidata = asignando
+    if (candidata != null) {
+        Dialog(onDismissRequest = { asignando = null }) {
+            Pegatina(
+                modifier = Modifier.fillMaxWidth().padding(6.dp),
+                radio = 26.dp,
+                sombra = 6.dp
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = "¿${candidata.nombre} es alguien de la lista?",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Si lo añadiste a mano, asígnale su sitio y hereda sus " +
+                            "gastos. El nombre y el monigote se quedan los que ha elegido.",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 6.dp)
                     )
                     Spacer(Modifier.height(10.dp))
-
-                    libres.forEach { colega ->
+                    colegasLibres.forEach { colega ->
                         Pegatina(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                             sombra = 2.dp,
-                            onClick = { onEntrar(limpiaCodigo(codigo), colega.id, null) }
+                            onClick = {
+                                onAprobar(candidata.uid, colega.id)
+                                asignando = null
+                            }
                         ) {
                             Row(
                                 modifier = Modifier.padding(10.dp),
@@ -306,46 +447,29 @@ fun DialogoUnirse(
                             ) {
                                 AvatarMonigote(
                                     monigote = avatarDe(colega),
-                                    tamano = 40,
+                                    tamano = 38,
                                     descripcion = colega.nombre
                                 )
                                 Spacer(Modifier.width(10.dp))
                                 Text(
-                                    text = colega.nombre,
+                                    text = "Es ${colega.nombre}",
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.weight(1f)
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Text(text = "›", style = MaterialTheme.typography.titleLarge)
                             }
                         }
                     }
-
-                    Spacer(Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = nombreNuevo,
-                        onValueChange = { nombreNuevo = it },
-                        label = { Text("O soy alguien nuevo") },
-                        placeholder = { Text("Tu nombre") },
-                        singleLine = true,
+                    Spacer(Modifier.height(4.dp))
+                    BotonPegatina(
+                        texto = "No, entra como alguien nuevo",
+                        color = Paleta.CremaHundido,
+                        colorTexto = Paleta.Tinta,
+                        onClick = {
+                            onAprobar(candidata.uid, null)
+                            asignando = null
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(Modifier.height(14.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        BotonPegatina(
-                            texto = "Cancelar",
-                            color = Paleta.CremaHundido,
-                            colorTexto = Paleta.Tinta,
-                            onClick = onCerrar,
-                            modifier = Modifier.weight(1f)
-                        )
-                        BotonPegatina(
-                            texto = if (sincronizando) "Entrando…" else "Entrar",
-                            habilitado = nombreNuevo.isNotBlank() && !sincronizando,
-                            onClick = { onEntrar(limpiaCodigo(codigo), null, nombreNuevo.trim()) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
                 }
             }
         }

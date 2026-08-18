@@ -8,7 +8,7 @@ import com.pulgares.app.data.EstadoGrupo
 import com.pulgares.app.data.Repositorio
 import com.pulgares.app.data.RepositorioNube
 import com.pulgares.app.data.red.ClienteNube
-import com.pulgares.app.data.red.Sincronizador
+import com.pulgares.app.data.red.IdentidadMovil
 import com.pulgares.app.data.ResumenGrupo
 import com.pulgares.app.domain.model.Categoria
 import com.pulgares.app.domain.model.Colega
@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -31,22 +32,61 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalCoroutinesApi::class)
 class PulgaresViewModel(
     private val repo: Repositorio,
+    private val identidad: IdentidadMovil? = null,
     private val nube: RepositorioNube? = null
 ) : ViewModel() {
+
+    // ---- el perfil: quién soy en todos los grupos ----
+
+    /** null mientras carga; Perfil("") no existe: sin nombre no hay perfil. */
+    private val _perfilCargado = MutableStateFlow(false)
+    val perfilCargado: StateFlow<Boolean> = _perfilCargado
+
+    val perfil: StateFlow<IdentidadMovil.Perfil?> =
+        (identidad?.observaPerfil() ?: flowOf(null))
+            .onEach { _perfilCargado.value = true }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /**
+     * Sugerencia para el primer arranque de quien YA usaba la app: el nombre y
+     * monigote de su colega "yo" más reciente, para no hacerle escribirlo otra vez.
+     */
+    suspend fun perfilSugerido(): IdentidadMovil.Perfil? = repo.miYoMasReciente()?.let {
+        IdentidadMovil.Perfil(it.nombre, it.avatar.orEmpty())
+    }
+
+    fun guardaPerfil(nombre: String, avatar: Monigote, luego: () -> Unit = {}) {
+        viewModelScope.launch {
+            identidad?.guardaPerfil(nombre, avatar.serializa())
+            // El monigote del perfil es el mismo en todos los grupos.
+            repo.guardaMiAvatar(avatar.serializa())
+            repo.renombraMisYo(nombre)
+            luego()
+        }
+    }
+
+    // ---- solicitudes pendientes de este móvil (portada) ----
+
+    val pendientes: StateFlow<List<IdentidadMovil.Pendiente>> =
+        (nube?.observaPendientes() ?: flowOf(emptyList()))
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // ---- solicitudes que me llegan como dueño (por grupo) ----
+
+    private val _solicitudes = MutableStateFlow<Map<String, RepositorioNube.Resultado>>(emptyMap())
+
+    /** El último resultado de sync por grupo: solicitudes y colegas libres. */
+    val solicitudes: StateFlow<Map<String, RepositorioNube.Resultado>> = _solicitudes
+
+    private fun apuntaResultado(grupoId: String, resultado: RepositorioNube.Resultado) {
+        _solicitudes.value = _solicitudes.value + (grupoId to resultado)
+    }
 
     /** ¿Esta build lleva sincronización? Sin token, la app es 100% local. */
     val nubeDisponible: Boolean get() = nube?.disponible == true
 
     private val _sincronizando = MutableStateFlow(false)
     val sincronizando: StateFlow<Boolean> = _sincronizando
-
-    /** Lo que se está mirando antes de unirse a un grupo ajeno. */
-    private val _grupoAlQueUnirse = MutableStateFlow<Sincronizador.GrupoRemoto?>(null)
-    val grupoAlQueUnirse: StateFlow<Sincronizador.GrupoRemoto?> = _grupoAlQueUnirse
-
-    fun olvidaGrupoAlQueUnirse() {
-        _grupoAlQueUnirse.value = null
-    }
 
     /**
      * Envuelve una operación de red: enciende el indicador, y si algo falla lo
@@ -84,7 +124,80 @@ class PulgaresViewModel(
     }
 
     fun sincroniza(grupoId: String, onHecho: (RepositorioNube.Resultado) -> Unit, onError: (String) -> Unit) {
-        enLaNube(onError) { destino -> onHecho(destino.sincroniza(grupoId)) }
+        enLaNube(onError) { destino ->
+            val resultado = destino.sincroniza(grupoId)
+            apuntaResultado(grupoId, resultado)
+            onHecho(resultado)
+        }
+    }
+
+    /** Sync de fondo al abrir un grupo compartido: sin ruido si no hay nada. */
+    fun sincronizaEnSilencio(grupoId: String, onNovedades: (RepositorioNube.Resultado) -> Unit) {
+        val destino = nube ?: return
+        if (!destino.disponible) return
+        viewModelScope.launch {
+            runCatching { destino.sincroniza(grupoId) }.onSuccess { resultado ->
+                apuntaResultado(grupoId, resultado)
+                if (resultado.gastosNuevos > 0 || resultado.pagosNuevos > 0 ||
+                    resultado.solicitudes.isNotEmpty()
+                ) {
+                    onNovedades(resultado)
+                }
+            }
+        }
+    }
+
+    /** Pide entrar en un grupo con el código (o pregunta cómo va la petición). */
+    fun solicita(codigo: String, onHecho: (RepositorioNube.Solicitud) -> Unit, onError: (String) -> Unit) {
+        enLaNube(onError) { destino -> onHecho(destino.solicita(codigo)) }
+    }
+
+    /** Repasa todas las peticiones en el aire (el botón de la portada). */
+    fun compruebaPendientes(
+        onHecho: (List<Pair<IdentidadMovil.Pendiente, RepositorioNube.Solicitud>>) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        enLaNube(onError) { destino -> onHecho(destino.compruebaPendientes()) }
+    }
+
+    fun apruebaSolicitud(
+        grupoId: String,
+        solicitanteUid: String,
+        colegaId: String?,
+        onHecho: (String) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        enLaNube(onError) { destino ->
+            val remoto = destino.aprueba(grupoId, solicitanteUid, colegaId)
+            apuntaResultado(
+                grupoId,
+                RepositorioNube.Resultado(
+                    codigo = remoto.codigo,
+                    gastosNuevos = 0,
+                    pagosNuevos = 0,
+                    solicitudes = remoto.solicitudes,
+                    colegasLibres = remoto.colegas.filter { it.id in remoto.colegasLibres }
+                )
+            )
+            onHecho(remoto.solicitudes.size.toString())
+        }
+    }
+
+    fun rechazaSolicitud(grupoId: String, solicitanteUid: String, onHecho: () -> Unit, onError: (String) -> Unit) {
+        enLaNube(onError) { destino ->
+            val remoto = destino.rechaza(grupoId, solicitanteUid)
+            apuntaResultado(
+                grupoId,
+                RepositorioNube.Resultado(
+                    codigo = remoto.codigo,
+                    gastosNuevos = 0,
+                    pagosNuevos = 0,
+                    solicitudes = remoto.solicitudes,
+                    colegasLibres = remoto.colegas.filter { it.id in remoto.colegasLibres }
+                )
+            )
+            onHecho()
+        }
     }
 
     fun rotaCodigo(grupoId: String, onHecho: (String) -> Unit, onError: (String) -> Unit) {
@@ -100,28 +213,6 @@ class PulgaresViewModel(
 
     fun codigoDeRecuperacion(grupoId: String, onHecho: (String?) -> Unit) {
         viewModelScope.launch { onHecho(nube?.codigoDeRecuperacion(grupoId)) }
-    }
-
-    /** Primer paso de unirse: mirar qué hay detrás del código. */
-    fun miraCodigo(codigo: String, onError: (String) -> Unit) {
-        enLaNube(onError) { destino ->
-            _grupoAlQueUnirse.value = destino.mira(codigo)
-        }
-    }
-
-    /** Segundo paso: entrar como un colega concreto (o como uno nuevo). */
-    fun entra(
-        codigo: String,
-        colegaId: String?,
-        miNombre: String?,
-        onHecho: (String) -> Unit,
-        onError: (String) -> Unit
-    ) {
-        enLaNube(onError) { destino ->
-            val grupoId = destino.entra(codigo, colegaId, miNombre)
-            _grupoAlQueUnirse.value = null
-            onHecho(grupoId)
-        }
     }
 
     val grupos: StateFlow<List<ResumenGrupo>> = repo.observaResumenGrupos()
@@ -141,9 +232,15 @@ class PulgaresViewModel(
         grupoAbierto.value = grupoId
     }
 
-    fun creaGrupo(nombre: String, emoji: String, colegas: List<String>, miNombre: String, luego: (String) -> Unit) {
+    fun creaGrupo(nombre: String, emoji: String, luego: (String) -> Unit) {
         viewModelScope.launch {
-            val id = repo.creaGrupo(nombre, emoji, colegas, miNombre)
+            val quien = identidad?.perfil()
+            val id = repo.creaGrupo(
+                nombre = nombre,
+                emoji = emoji,
+                miNombre = quien?.nombre ?: "Yo",
+                miAvatar = quien?.avatar?.takeIf { it.isNotBlank() }
+            )
             grupoAbierto.value = id
             luego(id)
         }
@@ -264,10 +361,11 @@ class PulgaresViewModel(
 
     class Fabrica(
         private val repo: Repositorio,
+        private val identidad: IdentidadMovil? = null,
         private val nube: RepositorioNube? = null
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            PulgaresViewModel(repo, nube) as T
+            PulgaresViewModel(repo, identidad, nube) as T
     }
 }

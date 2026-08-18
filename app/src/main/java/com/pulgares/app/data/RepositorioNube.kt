@@ -31,7 +31,11 @@ class RepositorioNube(
     data class Resultado(
         val codigo: String,
         val gastosNuevos: Int,
-        val pagosNuevos: Int
+        val pagosNuevos: Int,
+        /** Peticiones de entrar esperando al dueño (vacío si no soy yo). */
+        val solicitudes: List<Sincronizador.Solicitud> = emptyList(),
+        /** Colegas creados a mano sin móvil, para asignarlos al aprobar. */
+        val colegasLibres: List<Colega> = emptyList()
     )
 
     /**
@@ -105,22 +109,56 @@ class RepositorioNube(
         return guardaLoQueLlega(estado, remoto)
     }
 
-    /** Entra en un grupo que ya existe. Devuelve null si hay que elegir quién eres. */
-    suspend fun mira(codigo: String): Sincronizador.GrupoRemoto {
-        val uid = identidad.uid()
-        val respuesta = cliente.unirse(uid, codigo)
-        // El id local todavía no existe: se usa un hueco y se rellena al entrar.
-        return Sincronizador.leeGrupo(respuesta.getJSONObject("grupo"), "")
+    /** Cómo quedó una petición de entrar. */
+    sealed interface Solicitud {
+        /** Aprobada: el grupo ya está bajado en este móvil. */
+        data class Dentro(val grupoId: String) : Solicitud
+
+        /** El dueño todavía no ha dicho nada. */
+        data class Pendiente(val nombreGrupo: String, val emoji: String) : Solicitud
+
+        /** El dueño dijo que no (se puede volver a pedir). */
+        data class Rechazada(val nombreGrupo: String) : Solicitud
     }
 
     /**
-     * Se une de verdad, reclamando un colega existente o creándose uno nuevo, y
-     * deja el grupo guardado en este móvil.
+     * Pide entrar en un grupo con su código, llevando el nombre y el monigote
+     * del perfil. Idempotente: llamarla otra vez pregunta cómo va la cosa, y si
+     * ya está aprobada, baja el grupo y lo deja guardado.
      */
-    suspend fun entra(codigo: String, colegaId: String?, miNombre: String?): String {
+    suspend fun solicita(codigo: String): Solicitud {
+        val perfil = identidad.perfil()
+            ?: throw ClienteNube.ErrorNube(0, "Primero ponte un nombre en tu perfil")
         val uid = identidad.uid()
-        val respuesta = cliente.unirse(uid, codigo, colegaId, miNombre)
-        val remoto = Sincronizador.leeGrupo(respuesta.getJSONObject("grupo"), "")
+        val respuesta = cliente.unirse(uid, codigo, perfil.nombre, perfil.avatar)
+        val grupoJson = respuesta.getJSONObject("grupo")
+
+        return when (respuesta.optString("estado")) {
+            "dentro" -> {
+                identidad.quitaPendiente(codigo)
+                Solicitud.Dentro(guardaGrupoEntero(grupoJson))
+            }
+
+            "rechazada" -> {
+                identidad.quitaPendiente(codigo)
+                Solicitud.Rechazada(grupoJson.optString("nombre"))
+            }
+
+            else -> {
+                val pendiente = IdentidadMovil.Pendiente(
+                    codigo = codigo,
+                    nombreGrupo = grupoJson.optString("nombre"),
+                    emoji = grupoJson.optString("emoji").ifBlank { "👥" }
+                )
+                identidad.guardaPendiente(pendiente)
+                Solicitud.Pendiente(pendiente.nombreGrupo, pendiente.emoji)
+            }
+        }
+    }
+
+    /** Baja un grupo entero de la nube y lo guarda (o actualiza) en este móvil. */
+    private suspend fun guardaGrupoEntero(grupoJson: org.json.JSONObject): String {
+        val remoto = Sincronizador.leeGrupo(grupoJson, "")
 
         // ¿Ya tenía este grupo bajado? Entonces se actualiza en vez de duplicarlo.
         val existente = bd.grupos().grupoPorRemoto(remoto.remotoId)
@@ -145,6 +183,40 @@ class RepositorioNube(
         )
         guardaLoQueLlega(estadoLocal(grupoId), conGrupo)
         return grupoId
+    }
+
+    /** Las peticiones de este móvil que siguen en el aire. */
+    fun observaPendientes() = identidad.observaPendientes()
+
+    /**
+     * Pregunta por todas las solicitudes pendientes. Devuelve el resultado de
+     * cada una para que la portada cuente qué ha pasado.
+     */
+    suspend fun compruebaPendientes(): List<Pair<IdentidadMovil.Pendiente, Solicitud>> =
+        identidad.pendientes().map { pendiente ->
+            pendiente to runCatching { solicita(pendiente.codigo) }
+                .getOrElse { Solicitud.Pendiente(pendiente.nombreGrupo, pendiente.emoji) }
+        }
+
+    /** El dueño aprueba una solicitud; [colegaId] la asigna a uno creado a mano. */
+    suspend fun aprueba(grupoId: String, solicitanteUid: String, colegaId: String?): Sincronizador.GrupoRemoto {
+        val estado = estadoLocal(grupoId)
+        val remotoId = estado.grupo.remotoId
+            ?: throw ClienteNube.ErrorNube(0, "Este grupo no está compartido")
+        val respuesta = cliente.aprueba(identidad.uid(), remotoId, solicitanteUid, colegaId)
+        val remoto = Sincronizador.leeGrupo(respuesta.getJSONObject("grupo"), grupoId)
+        guardaLoQueLlega(estado, remoto)
+        return remoto
+    }
+
+    suspend fun rechaza(grupoId: String, solicitanteUid: String): Sincronizador.GrupoRemoto {
+        val estado = estadoLocal(grupoId)
+        val remotoId = estado.grupo.remotoId
+            ?: throw ClienteNube.ErrorNube(0, "Este grupo no está compartido")
+        val respuesta = cliente.rechaza(identidad.uid(), remotoId, solicitanteUid)
+        val remoto = Sincronizador.leeGrupo(respuesta.getJSONObject("grupo"), grupoId)
+        guardaLoQueLlega(estado, remoto)
+        return remoto
     }
 
     /** Cambia el código del grupo (solo el dueño). */
@@ -226,11 +298,10 @@ class RepositorioNube(
         return Resultado(
             codigo = remoto.codigo,
             gastosNuevos = gastos.count { it.id !in gastosAntes },
-            pagosNuevos = pagos.count { it.id !in pagosAntes }
+            pagosNuevos = pagos.count { it.id !in pagosAntes },
+            solicitudes = remoto.solicitudes,
+            colegasLibres = remoto.colegas.filter { it.id in remoto.colegasLibres }
         )
     }
 
-    /** Los colegas de un grupo remoto, para la pantalla de "¿quién eres?". */
-    fun colegasParaElegir(remoto: Sincronizador.GrupoRemoto): List<Colega> =
-        remoto.colegas.filter { it.id in remoto.colegasLibres }
 }

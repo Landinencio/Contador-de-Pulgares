@@ -198,13 +198,20 @@ sale un **código de seis caracteres** que se manda por WhatsApp; quien lo tecle
 entra y desde entonces los dos móviles ven los mismos gastos. Sin registro, sin
 correo y sin contraseñas: el código *es* la invitación.
 
+La primera vez que se abre la app se elige **perfil**: tu nombre y tu monigote.
+Es lo que te identifica en todos los grupos — al crear uno entras tú con tu
+perfil, y al pedir entrar en otro, tu petición viaja con tu nombre y tu careto.
+Nadie bautiza a nadie: cada uno se llama como quiere.
+
 Detalles que importan:
 
 - El alfabeto tiene 31 símbolos, sin `0`, `O`, `1`, `I` ni `L`, que son los que se
   confunden al dictar el código en voz alta. Salen 887 millones de combinaciones.
-- **Unirse va en dos pasos** para no duplicar gente: con el código a secas la app
-  enseña quién hay en el grupo y pregunta «¿cuál eres tú?», y solo entonces ese
-  móvil queda asociado a ese colega. Si alguien ya lo cogió, lo dice.
+- **Se entra por solicitud.** Con el código no se entra directamente: le llega una
+  petición al dueño del grupo (con el nombre y el monigote del solicitante) y él
+  la aprueba o la rechaza desde sus ajustes. Al aprobar puede asignarla a un
+  colega que creó a mano —hereda sus gastos— o dejar que entre como alguien
+  nuevo; en los dos casos el nombre y el careto son los que eligió el solicitante.
 - **El código se puede cambiar.** Sin eso, a quien echas del grupo le basta con
   haberlo apuntado para volver a entrar.
 - Al crear un grupo compartido sale un **código de recuperación** que solo ve quien

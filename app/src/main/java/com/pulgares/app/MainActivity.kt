@@ -48,7 +48,11 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.core.content.ContextCompat
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import com.pulgares.app.avatar.Monigote
 import com.pulgares.app.ui.screens.BloqueCompartir
+import com.pulgares.app.ui.screens.BloqueSolicitudes
 import com.pulgares.app.ui.screens.DetalleGrupoScreen
 import com.pulgares.app.ui.screens.DialogoUnirse
 import com.pulgares.app.ui.screens.EditarGrupoScreen
@@ -56,6 +60,7 @@ import com.pulgares.app.ui.screens.EditorAvatarScreen
 import com.pulgares.app.ui.screens.avatarDe
 import com.pulgares.app.ui.screens.NuevoGastoScreen
 import com.pulgares.app.ui.screens.NuevoGrupoScreen
+import com.pulgares.app.ui.screens.PerfilScreen
 import com.pulgares.app.ui.screens.PortadaScreen
 import com.pulgares.app.ui.theme.TemaPulgares
 import kotlinx.coroutines.launch
@@ -151,7 +156,7 @@ fun AppPulgares(
     nube: RepositorioNube? = null,
     identidad: IdentidadMovil? = null
 ) {
-    val vm: PulgaresViewModel = viewModel(factory = PulgaresViewModel.Fabrica(repo, nube))
+    val vm: PulgaresViewModel = viewModel(factory = PulgaresViewModel.Fabrica(repo, identidad, nube))
     val grupos by vm.grupos.collectAsStateWithLifecycle()
     val estadoGrupo by vm.estadoGrupo.collectAsStateWithLifecycle()
     val miAvatar by vm.miAvatar.collectAsStateWithLifecycle()
@@ -164,8 +169,12 @@ fun AppPulgares(
     ) { mutableStateOf<Pantalla>(Pantalla.Portada) }
 
     val sincronizando by vm.sincronizando.collectAsStateWithLifecycle()
-    val grupoAlQueUnirse by vm.grupoAlQueUnirse.collectAsStateWithLifecycle()
+    val perfil by vm.perfil.collectAsStateWithLifecycle()
+    val perfilCargado by vm.perfilCargado.collectAsStateWithLifecycle()
+    val pendientes by vm.pendientes.collectAsStateWithLifecycle()
+    val solicitudesPorGrupo by vm.solicitudes.collectAsStateWithLifecycle()
     var uniendose by remember { mutableStateOf(false) }
+    var pedidaA by remember { mutableStateOf<String?>(null) }
     var recuperacion by remember { mutableStateOf<String?>(null) }
 
     val portapapeles = LocalClipboardManager.current
@@ -231,6 +240,29 @@ fun AppPulgares(
         pantalla.grupoAsociado?.let { vm.abreGrupo(it) }
     }
 
+    // Al abrir un grupo compartido se sincroniza en silencio: así los gastos de
+    // los demás y las solicitudes de entrar aparecen sin darle a ningún botón.
+    val grupoCompartidoAbierto = estadoGrupo?.grupo?.takeIf {
+        it.compartido && it.id == pantalla.grupoAsociado
+    }?.id
+    LaunchedEffect(grupoCompartidoAbierto) {
+        grupoCompartidoAbierto?.let { grupoId ->
+            vm.sincronizaEnSilencio(grupoId) { novedades ->
+                if (novedades.solicitudes.isNotEmpty()) {
+                    avisa(
+                        if (novedades.solicitudes.size == 1) {
+                            "🛎️ ${novedades.solicitudes.first().nombre} quiere entrar: apruébalo en ajustes."
+                        } else {
+                            "🛎️ ${novedades.solicitudes.size} personas quieren entrar: apruébalas en ajustes."
+                        }
+                    )
+                } else {
+                    avisa(resumenSync(novedades))
+                }
+            }
+        }
+    }
+
     // Un grupo recién saldado merece confeti. Sin gastos no cuenta: estar a cero
     // porque no has gastado nada no es ningún logro.
     val grupoAbierto = estadoGrupo
@@ -238,6 +270,38 @@ fun AppPulgares(
         enPaz = grupoAbierto != null && grupoAbierto.enPaz && grupoAbierto.gastos.isNotEmpty(),
         de = grupoAbierto?.grupo?.id
     )
+
+    // ---- primer arranque: sin perfil no se pasa de aquí ----
+    // El perfil es lo que viaja al pedir entrar en un grupo y lo que te
+    // identifica al crear uno, así que se pide una vez y de frente.
+    if (!perfilCargado) {
+        Cargando()
+        return
+    }
+    if (perfil == null) {
+        // A quien ya usaba la app se le sugiere el nombre y monigote de su
+        // "yo" más reciente, para no hacerle escribirlo otra vez.
+        var sugerido by remember { mutableStateOf<IdentidadMovil.Perfil?>(null) }
+        var sugerenciaLista by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            sugerido = vm.perfilSugerido()
+            sugerenciaLista = true
+        }
+        if (!sugerenciaLista) {
+            Cargando()
+            return
+        }
+        val avatarInicial = remember(sugerido) {
+            Monigote.parse(sugerido?.avatar) ?: Monigote.aleatorio()
+        }
+        PerfilScreen(
+            nombreInicial = sugerido?.nombre.orEmpty(),
+            avatarInicial = avatarInicial,
+            esPrimeraVez = true,
+            onGuardar = { nombre, monigote -> vm.guardaPerfil(nombre, monigote) }
+        )
+        return
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(avisos) },
@@ -259,14 +323,38 @@ fun AppPulgares(
                     } else {
                         null
                     },
+                    pendientes = pendientes,
+                    onComprobarPendientes = {
+                        vm.compruebaPendientes(
+                            onHecho = { resultados ->
+                                resultados.forEach { (pendiente, resultado) ->
+                                    when (resultado) {
+                                        is RepositorioNube.Solicitud.Dentro -> {
+                                            pantalla = Pantalla.Grupo(resultado.grupoId)
+                                            avisa("¡Dentro de «${pendiente.nombreGrupo}»! Que empiece el drama.")
+                                        }
+
+                                        is RepositorioNube.Solicitud.Rechazada ->
+                                            avisa("El dueño de «${pendiente.nombreGrupo}» ha dicho que no.")
+
+                                        is RepositorioNube.Solicitud.Pendiente ->
+                                            avisa("«${pendiente.nombreGrupo}» sigue sin respuesta. Dale un toque al dueño.")
+                                    }
+                                }
+                            },
+                            onError = { avisa(it) }
+                        )
+                    },
                     cobradorContratado = if (identidad == null) null else cobradorContratado,
                     onContratarCobrador = ::contrataCobrador,
                     onDespedirCobrador = ::despideCobrador
                 )
 
                 Pantalla.NuevoGrupo -> NuevoGrupoScreen(
-                    onCrear = { nombre, emoji, colegas, miNombre ->
-                        vm.creaGrupo(nombre, emoji, colegas, miNombre) { id ->
+                    miNombre = perfil?.nombre ?: "Yo",
+                    miAvatar = miAvatar,
+                    onCrear = { nombre, emoji ->
+                        vm.creaGrupo(nombre, emoji) { id ->
                             pantalla = Pantalla.Grupo(id)
                         }
                     },
@@ -373,6 +461,29 @@ fun AppPulgares(
                                 // El código de recuperación se pide al entrar aquí.
                                 LaunchedEffect(estado.grupo.remotoId) {
                                     vm.codigoDeRecuperacion(actual.grupoId) { recuperacion = it }
+                                }
+                                val resultado = solicitudesPorGrupo[actual.grupoId]
+                                if (resultado != null && resultado.solicitudes.isNotEmpty()) {
+                                    BloqueSolicitudes(
+                                        solicitudes = resultado.solicitudes,
+                                        colegasLibres = resultado.colegasLibres,
+                                        sincronizando = sincronizando,
+                                        onAprobar = { uid, colegaId ->
+                                            vm.apruebaSolicitud(
+                                                actual.grupoId, uid, colegaId,
+                                                onHecho = { avisa("Dentro. Uno más a repartir.") },
+                                                onError = { avisa(it) }
+                                            )
+                                        },
+                                        onRechazar = { uid ->
+                                            vm.rechazaSolicitud(
+                                                actual.grupoId, uid,
+                                                onHecho = { avisa("Rechazado. Sin rencores (o sí).") },
+                                                onError = { avisa(it) }
+                                            )
+                                        }
+                                    )
+                                    Spacer(Modifier.height(12.dp))
                                 }
                                 BloqueCompartir(
                                     grupo = estado.grupo,
@@ -489,12 +600,15 @@ fun AppPulgares(
                     }
                 }
 
-                Pantalla.MiAvatar -> EditorAvatarScreen(
-                    inicial = miAvatar,
-                    onGuardar = { monigote ->
-                        vm.guardaMiAvatar(monigote)
-                        pantalla = Pantalla.Portada
-                        avisa("Monigote actualizado. Menudo careto.")
+                Pantalla.MiAvatar -> PerfilScreen(
+                    nombreInicial = perfil?.nombre.orEmpty(),
+                    avatarInicial = miAvatar,
+                    esPrimeraVez = false,
+                    onGuardar = { nombre, monigote ->
+                        vm.guardaPerfil(nombre, monigote) {
+                            pantalla = Pantalla.Portada
+                            avisa("Perfil guardado. Menudo careto.")
+                        }
                     },
                     onVolver = { pantalla = Pantalla.Portada }
                 )
@@ -502,25 +616,39 @@ fun AppPulgares(
 
             if (uniendose) {
                 DialogoUnirse(
-                    mirado = grupoAlQueUnirse,
+                    miNombre = perfil?.nombre ?: "Yo",
+                    miAvatar = miAvatar,
                     sincronizando = sincronizando,
-                    onMirar = { codigo -> vm.miraCodigo(codigo) { avisa(it) } },
-                    onEntrar = { codigo, colegaId, nombre ->
-                        vm.entra(
-                            codigo = codigo,
-                            colegaId = colegaId,
-                            miNombre = nombre,
-                            onHecho = { grupoId ->
-                                uniendose = false
-                                pantalla = Pantalla.Grupo(grupoId)
-                                avisa("Dentro. Que empiece el drama.")
+                    pedidaA = pedidaA,
+                    onPedir = { codigo ->
+                        vm.solicita(
+                            codigo,
+                            onHecho = { resultado ->
+                                when (resultado) {
+                                    is RepositorioNube.Solicitud.Dentro -> {
+                                        uniendose = false
+                                        pedidaA = null
+                                        pantalla = Pantalla.Grupo(resultado.grupoId)
+                                        avisa("Dentro. Que empiece el drama.")
+                                    }
+
+                                    is RepositorioNube.Solicitud.Pendiente -> {
+                                        pedidaA = resultado.nombreGrupo
+                                    }
+
+                                    is RepositorioNube.Solicitud.Rechazada -> {
+                                        uniendose = false
+                                        pedidaA = null
+                                        avisa("El dueño de «${resultado.nombreGrupo}» ha dicho que no. Habla con él.")
+                                    }
+                                }
                             },
                             onError = { avisa(it) }
                         )
                     },
                     onCerrar = {
                         uniendose = false
-                        vm.olvidaGrupoAlQueUnirse()
+                        pedidaA = null
                     }
                 )
             }

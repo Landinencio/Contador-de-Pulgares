@@ -80,6 +80,14 @@ object Sincronizador {
         return cuerpo
     }
 
+    /** Una petición de entrar al grupo, esperando al dueño. */
+    data class Solicitud(
+        val uid: String,
+        val nombre: String,
+        val avatar: String?,
+        val pedidaMillis: Long
+    )
+
     /** Lo que devuelve el backend, ya en modelo de la app. */
     data class GrupoRemoto(
         val remotoId: String,
@@ -91,6 +99,8 @@ object Sincronizador {
         val miColegaId: String?,
         val colegas: List<Colega>,
         val colegasLibres: List<String>,
+        /** Solo llegan si soy el dueño: es quien las aprueba. */
+        val solicitudes: List<Solicitud>,
         val gastos: List<Gasto>,
         val pagos: List<Pago>
     )
@@ -151,6 +161,14 @@ object Sincronizador {
             miColegaId = miColega,
             colegas = colegas,
             colegasLibres = json.optJSONArray("colegasLibres").aConjunto().toList(),
+            solicitudes = json.optJSONArray("solicitudes").porCada { item ->
+                Solicitud(
+                    uid = item.optString("uid"),
+                    nombre = item.optString("nombre"),
+                    avatar = item.optString("avatar").takeIf { it.isNotBlank() && it != "null" },
+                    pedidaMillis = item.optLong("pedida")
+                )
+            }.filterNot { it.uid.isBlank() },
             gastos = gastos,
             pagos = pagos
         )

@@ -6,7 +6,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import java.util.UUID
 
 private val Context.ajustes by preferencesDataStore(name = "pulgares")
@@ -26,6 +28,80 @@ class IdentidadMovil(private val context: Context) {
     private val claveRecuperacion = stringPreferencesKey("recuperacion")
     private val claveCobrador = booleanPreferencesKey("cobradorContratado")
     private val claveUltimoAviso = longPreferencesKey("cobradorUltimoAviso")
+    private val claveNombre = stringPreferencesKey("perfilNombre")
+    private val claveAvatar = stringPreferencesKey("perfilAvatar")
+    private val clavePendientes = stringPreferencesKey("solicitudesPendientes")
+
+    // ---- el perfil: quién soy en todos los grupos ----
+
+    /** Nombre y monigote que viajan con cada solicitud de entrar a un grupo. */
+    data class Perfil(val nombre: String, val avatar: String)
+
+    /** null = primer arranque: hay que pasar por la pantalla de perfil. */
+    suspend fun perfil(): Perfil? {
+        val datos = context.ajustes.data.first()
+        val nombre = datos[claveNombre]?.takeIf { it.isNotBlank() } ?: return null
+        return Perfil(nombre, datos[claveAvatar].orEmpty())
+    }
+
+    suspend fun guardaPerfil(nombre: String, avatar: String) {
+        context.ajustes.edit {
+            it[claveNombre] = nombre.trim()
+            it[claveAvatar] = avatar
+        }
+    }
+
+    /** Observable, para que la cabecera se entere al cambiar el perfil. */
+    fun observaPerfil(): Flow<Perfil?> = context.ajustes.data.map { datos ->
+        datos[claveNombre]?.takeIf { it.isNotBlank() }?.let { nombre ->
+            Perfil(nombre, datos[claveAvatar].orEmpty())
+        }
+    }
+
+    // ---- solicitudes que este móvil tiene en el aire ----
+
+    /** Una petición de entrar que aún no han aprobado. */
+    data class Pendiente(val codigo: String, val nombreGrupo: String, val emoji: String)
+
+    /** Se guardan como "codigo|nombre|emoji;..." — son una o dos, no una tabla. */
+    suspend fun pendientes(): List<Pendiente> =
+        (context.ajustes.data.first()[clavePendientes] ?: "")
+            .split(";")
+            .mapNotNull { crudo ->
+                val trozos = crudo.split("|")
+                if (trozos.size < 3 || trozos[0].isBlank()) return@mapNotNull null
+                Pendiente(trozos[0], trozos[1], trozos[2])
+            }
+
+    fun observaPendientes(): Flow<List<Pendiente>> = context.ajustes.data.map { datos ->
+        (datos[clavePendientes] ?: "")
+            .split(";")
+            .mapNotNull { crudo ->
+                val trozos = crudo.split("|")
+                if (trozos.size < 3 || trozos[0].isBlank()) return@mapNotNull null
+                Pendiente(trozos[0], trozos[1], trozos[2])
+            }
+    }
+
+    suspend fun guardaPendiente(pendiente: Pendiente) {
+        context.ajustes.edit { prefs ->
+            val otras = (prefs[clavePendientes] ?: "")
+                .split(";")
+                .filter { it.isNotBlank() && !it.startsWith("${pendiente.codigo}|") }
+            prefs[clavePendientes] =
+                (otras + "${pendiente.codigo}|${pendiente.nombreGrupo}|${pendiente.emoji}")
+                    .joinToString(";")
+        }
+    }
+
+    suspend fun quitaPendiente(codigo: String) {
+        context.ajustes.edit { prefs ->
+            prefs[clavePendientes] = (prefs[clavePendientes] ?: "")
+                .split(";")
+                .filter { it.isNotBlank() && !it.startsWith("$codigo|") }
+                .joinToString(";")
+        }
+    }
 
     /** El uid de este móvil; se crea al primer uso. */
     suspend fun uid(): String {

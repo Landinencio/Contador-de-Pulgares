@@ -13,14 +13,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -28,6 +26,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.pulgares.app.avatar.AvatarMonigote
+import com.pulgares.app.avatar.Monigote
 import com.pulgares.app.ui.components.BotonPegatina
 import com.pulgares.app.ui.components.BotonRedondo
 import com.pulgares.app.ui.components.Pegatina
@@ -44,22 +44,22 @@ private val ejemplos = listOf(
     "Finde en la sierra", "Cena de Navidad"
 )
 
+/**
+ * Crear un grupo: nombre e icono, y ya. Tú entras con tu perfil; el resto de la
+ * gente pide entrar con el código (cada uno con su nombre y su monigote), o se
+ * añade a mano en los ajustes para grupos sin nube.
+ */
 @Composable
 fun NuevoGrupoScreen(
-    onCrear: (nombre: String, emoji: String, colegas: List<String>, miNombre: String) -> Unit,
+    miNombre: String,
+    miAvatar: Monigote,
+    onCrear: (nombre: String, emoji: String) -> Unit,
     onVolver: () -> Unit
 ) {
-    // rememberSaveable para que girar el móvil no borre lo escrito.
     var nombre by rememberSaveable { mutableStateOf("") }
     var emoji by rememberSaveable { mutableStateOf(emojisGrupo.first()) }
-    var miNombre by rememberSaveable { mutableStateOf("Yo") }
-    val colegas = remember { mutableStateListOf("", "") }
     // Sin remember, el ejemplo saltaba a otro en cada tecla pulsada.
     val ejemplo = remember { ejemplos.random() }
-
-    val puedeCrear = nombre.isNotBlank() &&
-        miNombre.isNotBlank() &&
-        colegas.count { it.isNotBlank() } >= 1
 
     LazyColumn(
         modifier = Modifier
@@ -79,7 +79,7 @@ fun NuevoGrupoScreen(
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
-                        text = "Un plan, unos colegas y muchas deudas",
+                        text = "Un plan y un nombre. La gente ya vendrá sola.",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -89,24 +89,16 @@ fun NuevoGrupoScreen(
 
         item {
             Pegatina(modifier = Modifier.fillMaxWidth(), sombra = 4.dp) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    OutlinedTextField(
-                        value = nombre,
-                        onValueChange = { nombre = it },
-                        label = { Text("¿Cómo se llama el grupo?") },
-                        placeholder = { Text(ejemplo) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = miNombre,
-                        onValueChange = { miNombre = it },
-                        label = { Text("¿Y tú quién eres?") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+                OutlinedTextField(
+                    value = nombre,
+                    onValueChange = { nombre = it },
+                    label = { Text("¿Cómo se llama el grupo?") },
+                    placeholder = { Text(ejemplo) },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                )
             }
         }
 
@@ -139,36 +131,35 @@ fun NuevoGrupoScreen(
             }
         }
 
+        // ---- quién entra de primeras: tú, con tu perfil ----
         item {
-            Text(
-                text = "¿Quién más va?",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(top = 6.dp)
-            )
-        }
-
-        itemsIndexed(colegas) { indice, valor ->
-            Pegatina(modifier = Modifier.fillMaxWidth(), sombra = 2.dp) {
+            Pegatina(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                sombra = 2.dp
+            ) {
                 Row(
-                    modifier = Modifier.padding(10.dp),
+                    modifier = Modifier.padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedTextField(
-                        value = valor,
-                        onValueChange = { colegas[indice] = it },
-                        label = { Text("Colega ${indice + 1}") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
+                    AvatarMonigote(
+                        monigote = miAvatar,
+                        tamano = 44,
+                        conFondo = false,
+                        descripcion = "Tu monigote"
                     )
-                    if (colegas.size > 1) {
-                        Spacer(Modifier.width(8.dp))
-                        BotonRedondo(
-                            contenido = "✕",
-                            descripcion = "Quitar a este colega de la lista",
-                            onClick = { colegas.removeAt(indice) },
-                            color = Paleta.RojoDeudaSuave,
-                            sombra = 2.dp
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = miNombre,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Entras tú. Los demás piden entrar con el código, " +
+                                "cada uno con su nombre.",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -176,23 +167,12 @@ fun NuevoGrupoScreen(
         }
 
         item {
-            BotonPegatina(
-                texto = "Añadir otro",
-                emoji = "➕",
-                color = Paleta.CremaHundido,
-                colorTexto = Paleta.Tinta,
-                onClick = { colegas.add("") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        item {
             Spacer(Modifier.height(4.dp))
             BotonPegatina(
                 texto = "Crear grupo",
                 emoji = "🚀",
-                habilitado = puedeCrear,
-                onClick = { onCrear(nombre.trim(), emoji, colegas.toList(), miNombre.trim()) },
+                habilitado = nombre.isNotBlank(),
+                onClick = { onCrear(nombre.trim(), emoji) },
                 modifier = Modifier.fillMaxWidth()
             )
         }

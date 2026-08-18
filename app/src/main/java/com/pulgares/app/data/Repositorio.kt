@@ -129,17 +129,38 @@ class Repositorio(private val bd: BaseDatos) {
                 ?.avatar
         }
 
-    suspend fun creaGrupo(nombre: String, emoji: String, nombresColegas: List<String>, miNombre: String): String {
+    /**
+     * Mi colega "yo" de cualquier grupo, para sugerir el perfil en el primer
+     * arranque a quien ya usaba la app: que no tenga que escribir su nombre otra
+     * vez si la app ya lo sabia.
+     */
+    suspend fun miYoMasReciente(): Colega? =
+        bd.grupos().colegasDeUnaVez()
+            .filter { it.soyYo }
+            .maxByOrNull { it.grupoId }
+            ?.aDominio()
+
+    /** Cambia mi nombre en todos los grupos a la vez (al editar el perfil). */
+    suspend fun renombraMisYo(nombre: String) {
+        val mios = bd.grupos().colegasDeUnaVez().filter { it.soyYo }
+        if (mios.isNotEmpty()) {
+            bd.grupos().guardaColegas(mios.map { it.copy(nombre = nombre.trim()) })
+        }
+    }
+
+    /**
+     * Crea un grupo. El unico colega inicial soy yo, con el nombre y el monigote
+     * del perfil: el resto de la gente entra pidiendolo con el codigo (y cada uno
+     * trae su nombre), o se anade a mano desde los ajustes para grupos sin nube.
+     */
+    suspend fun creaGrupo(nombre: String, emoji: String, miNombre: String, miAvatar: String?): String {
         val grupoId = nuevoId()
         val ahora = System.currentTimeMillis()
         bd.grupos().guardaGrupo(
             Grupo(id = grupoId, nombre = nombre, emoji = emoji, creadoMillis = ahora).aEntidad()
         )
-        val yo = Colega(id = nuevoId(), nombre = miNombre, soyYo = true)
-        val otros = nombresColegas.filter { it.isNotBlank() }.map { Colega(id = nuevoId(), nombre = it.trim()) }
-        bd.grupos().guardaColegas(
-            (listOf(yo) + otros).mapIndexed { indice, colega -> colega.aEntidad(grupoId, indice) }
-        )
+        val yo = Colega(id = nuevoId(), nombre = miNombre, avatar = miAvatar, soyYo = true)
+        bd.grupos().guardaColegas(listOf(yo.aEntidad(grupoId, 0)))
         return grupoId
     }
 

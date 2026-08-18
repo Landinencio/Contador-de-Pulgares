@@ -197,6 +197,35 @@ class SincronizadorTest {
     }
 
     @Test
+    fun `las solicitudes de entrar llegan solo si soy el dueño`() {
+        // Respuesta real del backend a /pulgares/grupo siendo el dueño.
+        val json = JSONObject(
+            """
+            {
+              "grupoId": "abc", "nombre": "Cañas", "emoji": "🍻", "codigo": "HGRND2",
+              "version": 1, "soyElDueno": true, "miColegaId": "col-yo",
+              "colegas": [{"id": "col-yo", "nombre": "Rubén", "avatar": null, "activo": true, "version": 1}],
+              "colegasLibres": [],
+              "solicitudes": [
+                {"uid": "movil-ana", "nombre": "Ana", "avatar": "m1:2,5,4,8,3,0,0,0,0,1,0", "pedida": 123}
+              ],
+              "gastos": [], "pagos": []
+            }
+            """.trimIndent()
+        )
+        val remoto = Sincronizador.leeGrupo(json, "local")
+        val solicitud = remoto.solicitudes.single()
+        assertEquals("movil-ana", solicitud.uid)
+        assertEquals("Ana", solicitud.nombre)
+        assertEquals(123L, solicitud.pedidaMillis)
+        assertTrue(solicitud.avatar!!.startsWith("m1:"))
+
+        // Y si el backend no manda el campo (no soy el dueño), lista vacía.
+        json.remove("solicitudes")
+        assertEquals(emptyList<Any>(), Sincronizador.leeGrupo(json, "local").solicitudes)
+    }
+
+    @Test
     fun `un grupo sin gastos ni colegas no revienta al leerlo`() {
         val json = JSONObject("""{"grupoId":"x","nombre":"Nuevo","emoji":"👥","codigo":"AAAAAA"}""")
         val remoto = Sincronizador.leeGrupo(json, "local")

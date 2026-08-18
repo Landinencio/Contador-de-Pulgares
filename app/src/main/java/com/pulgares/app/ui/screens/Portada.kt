@@ -25,6 +25,7 @@ import com.pulgares.app.avatar.AvatarMonigote
 import com.pulgares.app.avatar.MascotaPulgares
 import com.pulgares.app.avatar.Monigote
 import com.pulgares.app.data.ResumenGrupo
+import com.pulgares.app.data.red.IdentidadMovil
 import com.pulgares.app.domain.model.Dinero
 import com.pulgares.app.frases.Frases
 import com.pulgares.app.frases.Momento
@@ -47,6 +48,9 @@ fun PortadaScreen(
     onEditarAvatar: () -> Unit,
     /** null si esta build no lleva sincronización: entonces no se ofrece. */
     onUnirse: (() -> Unit)? = null,
+    /** Peticiones de entrar a grupos ajenos que siguen esperando al dueño. */
+    pendientes: List<IdentidadMovil.Pendiente> = emptyList(),
+    onComprobarPendientes: (() -> Unit)? = null,
     /** Estado del Cobrador del Frac; null mientras se carga. */
     cobradorContratado: Boolean? = null,
     onContratarCobrador: () -> Unit = {},
@@ -93,6 +97,34 @@ fun PortadaScreen(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+        }
+
+        // ---- peticiones esperando al dueño ----
+        if (pendientes.isNotEmpty() && onComprobarPendientes != null) {
+            item {
+                Pegatina(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Paleta.MostazaSuave,
+                    sombra = 4.dp,
+                    onClick = onComprobarPendientes
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        pendientes.forEach { pendiente ->
+                            Text(
+                                text = "⏳ ${pendiente.emoji} Esperando que te dejen entrar " +
+                                    "en «${pendiente.nombreGrupo}»",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Paleta.Tinta
+                            )
+                        }
+                        Text(
+                            text = "Toca para comprobar si ya te han aprobado.",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Paleta.TintaSuave
+                        )
+                    }
                 }
             }
         }

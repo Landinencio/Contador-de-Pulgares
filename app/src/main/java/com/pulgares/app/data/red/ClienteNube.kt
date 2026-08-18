@@ -32,16 +32,26 @@ class ClienteNube(
         post(uid, "/pulgares/crear", cuerpo)
 
     /**
-     * Entra en un grupo con su código. Sin `colegaId` ni `nombre`, el backend
-     * devuelve el grupo y la lista de colegas que nadie ha reclamado, para que la
-     * app pregunte "¿quién eres?" en vez de crear un duplicado.
+     * Pide entrar en un grupo (o pregunta cómo va la petición: es idempotente).
+     * El backend responde con estado dentro / pendiente / rechazada.
      */
-    suspend fun unirse(uid: String, codigo: String, colegaId: String? = null, nombre: String? = null): JSONObject {
-        val cuerpo = JSONObject().put("codigo", codigo)
-        if (colegaId != null) cuerpo.put("colegaId", colegaId)
-        if (nombre != null) cuerpo.put("nombre", nombre)
+    suspend fun unirse(uid: String, codigo: String, nombre: String, avatar: String?): JSONObject {
+        val cuerpo = JSONObject()
+            .put("codigo", codigo)
+            .put("nombre", nombre)
+        if (!avatar.isNullOrBlank()) cuerpo.put("avatar", avatar)
         return post(uid, "/pulgares/unirse", cuerpo)
     }
+
+    /** El dueño deja entrar a [solicitanteUid]; [colegaId] hereda uno a mano. */
+    suspend fun aprueba(uid: String, grupoId: String, solicitanteUid: String, colegaId: String? = null): JSONObject {
+        val cuerpo = JSONObject().put("grupoId", grupoId).put("uid", solicitanteUid)
+        if (colegaId != null) cuerpo.put("colegaId", colegaId)
+        return post(uid, "/pulgares/aprobar", cuerpo)
+    }
+
+    suspend fun rechaza(uid: String, grupoId: String, solicitanteUid: String): JSONObject =
+        post(uid, "/pulgares/rechazar", JSONObject().put("grupoId", grupoId).put("uid", solicitanteUid))
 
     suspend fun sube(uid: String, cuerpo: JSONObject): JSONObject =
         post(uid, "/pulgares/sube", cuerpo)
