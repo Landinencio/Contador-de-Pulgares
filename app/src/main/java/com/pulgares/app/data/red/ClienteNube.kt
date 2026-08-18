@@ -19,11 +19,26 @@ import java.net.URL
  * de CI, así que la app tiene que funcionar igual sin esto.
  */
 class ClienteNube(
-    private val base: String = BuildConfig.SYNC_URL.removeSuffix("/"),
+    base: String = BuildConfig.SYNC_URL,
     private val token: String = BuildConfig.SYNC_TOKEN
 ) {
 
+    /**
+     * La base ya normalizada: el origen a secas. Las rutas de esta clase llevan
+     * el /pulgares/ delante, asi que si la base tambien lo trae (paso: la URL por
+     * defecto del primer dia acababa en /pulgares) las peticiones salian a
+     * /pulgares/pulgares/crear y el API Gateway devolvia un 404 que no era de la
+     * Lambda. Se recorta aqui para que ni una config vieja lo reintroduzca.
+     */
+    private val base: String = normaliza(base)
+
     val disponible: Boolean get() = token.isNotBlank() && base.startsWith("http")
+
+    companion object {
+        /** Quita barras y un /pulgares final: las rutas ya lo aportan. */
+        fun normaliza(url: String): String =
+            url.trim().removeSuffix("/").removeSuffix("/pulgares").removeSuffix("/")
+    }
 
     /** Un fallo que se le puede contar al usuario tal cual. */
     class ErrorNube(val codigo: Int, mensaje: String) : Exception(mensaje)

@@ -1,5 +1,6 @@
 package com.pulgares.app
 
+import com.pulgares.app.data.red.ClienteNube
 import com.pulgares.app.data.red.Sincronizador
 import com.pulgares.app.domain.model.Categoria
 import com.pulgares.app.domain.model.Gasto
@@ -30,6 +31,20 @@ class SincronizadorTest {
         reparto = Reparto.Escote(listOf("r", "a")),
         version = version
     )
+
+    @Test
+    fun `la base del cliente nunca acaba en pulgares`() {
+        // La URL por defecto del primer dia acababa en /pulgares y el cliente
+        // añade /pulgares/crear: las peticiones salian a /pulgares/pulgares/crear
+        // y el 404 del gateway parecia que faltaba la infraestructura (cazado por
+        // Rubén probando en su movil).
+        val bueno = "https://api.example.com"
+        assertEquals(bueno, ClienteNube.normaliza("https://api.example.com/pulgares"))
+        assertEquals(bueno, ClienteNube.normaliza("https://api.example.com/pulgares/"))
+        assertEquals(bueno, ClienteNube.normaliza("https://api.example.com/"))
+        assertEquals(bueno, ClienteNube.normaliza("https://api.example.com"))
+        assertEquals(bueno, ClienteNube.normaliza(" https://api.example.com/pulgares "))
+    }
 
     @Test
     fun `la fusion es la union por id`() {

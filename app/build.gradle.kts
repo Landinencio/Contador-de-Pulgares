@@ -71,7 +71,7 @@ android {
     // vacio la app funciona 100% offline y oculta el boton de sincronizar.
     defaultConfig.buildConfigField(
         "String", "SYNC_URL",
-        "\"${System.getenv("CDP_SYNC_URL")?.takeIf { it.isNotBlank() } ?: "https://v11t97w5g8.execute-api.eu-west-1.amazonaws.com/pulgares"}\""
+        "\"${System.getenv("CDP_SYNC_URL")?.takeIf { it.isNotBlank() } ?: "https://v11t97w5g8.execute-api.eu-west-1.amazonaws.com"}\""
     )
     defaultConfig.buildConfigField(
         "String", "SYNC_TOKEN",
