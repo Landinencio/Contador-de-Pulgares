@@ -15,6 +15,7 @@ import com.pulgares.app.domain.model.Colega
 import com.pulgares.app.domain.model.Gasto
 import com.pulgares.app.domain.model.Reparto
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -61,6 +62,7 @@ class PulgaresViewModel(
             // El monigote del perfil es el mismo en todos los grupos.
             repo.guardaMiAvatar(avatar.serializa())
             repo.renombraMisYo(nombre)
+            sincronizaTodosLosCompartidos()
             luego()
         }
     }
@@ -111,6 +113,44 @@ class PulgaresViewModel(
                 onError("Algo ha ido mal al hablar con la nube")
             } finally {
                 _sincronizando.value = false
+            }
+        }
+    }
+
+    // ---- el sync automático: la razón de que los gastos crucen solos ----
+
+    private val syncsPendientes = mutableMapOf<String, Job>()
+
+    /**
+     * Sincroniza un grupo compartido después de un cambio, con a un pequeño
+     * respiro para que una racha (tres votos seguidos) sea UNA subida y no tres.
+     *
+     * Este es el arreglo del "mi compañero no ve lo que yo subo": antes solo se
+     * sincronizaba al abrir el grupo, así que todo lo apuntado ya dentro se
+     * quedaba en el móvil hasta darle a "Sincronizar ahora" a mano.
+     */
+    private fun sincronizaTrasCambio(grupoId: String?) {
+        if (grupoId == null) return
+        val destino = nube ?: return
+        if (!destino.disponible) return
+        syncsPendientes[grupoId]?.cancel()
+        syncsPendientes[grupoId] = viewModelScope.launch {
+            kotlinx.coroutines.delay(600)
+            val compartido = repo.grupoDeUnaVez(grupoId)?.grupo?.compartido == true
+            if (!compartido) return@launch
+            runCatching { destino.sincroniza(grupoId) }
+                .onSuccess { apuntaResultado(grupoId, it) }
+        }
+    }
+
+    /** Al arrancar la app: bajar lo de los demás en todos los grupos compartidos. */
+    fun sincronizaTodosLosCompartidos() {
+        val destino = nube ?: return
+        if (!destino.disponible) return
+        viewModelScope.launch {
+            repo.idsDeGruposCompartidos().forEach { grupoId ->
+                runCatching { destino.sincroniza(grupoId) }
+                    .onSuccess { apuntaResultado(grupoId, it) }
             }
         }
     }
@@ -251,15 +291,27 @@ class PulgaresViewModel(
     }
 
     fun anadeColega(grupoId: String, nombre: String, orden: Int) {
-        viewModelScope.launch { repo.anadeColega(grupoId, nombre, orden) }
+        viewModelScope.launch {
+            repo.anadeColega(grupoId, nombre, orden)
+            sincronizaTrasCambio(grupoId)
+        }
     }
 
     fun guardaColegas(grupoId: String, colegas: List<Colega>) {
-        viewModelScope.launch { repo.guardaColegas(grupoId, colegas) }
+        viewModelScope.launch {
+            repo.guardaColegas(grupoId, colegas)
+            sincronizaTrasCambio(grupoId)
+        }
     }
 
     fun renombraGrupo(grupo: com.pulgares.app.domain.model.Grupo, nombre: String, emoji: String) {
-        viewModelScope.launch { repo.renombraGrupo(grupo, nombre, emoji) }
+        viewModelScope.launch {
+            repo.renombraGrupo(grupo, nombre, emoji)
+            // El nombre no viaja en la subida normal: tiene su propia ruta.
+            if (grupo.compartido && nube?.disponible == true) {
+                runCatching { nube.editaGrupo(grupo.id) }
+            }
+        }
     }
 
     /**
@@ -281,6 +333,7 @@ class PulgaresViewModel(
                 grupoId,
                 colegas.map { if (it.id == quien.id) it.copy(activo = activo) else it }
             )
+            sincronizaTrasCambio(grupoId)
         }
     }
 
@@ -290,12 +343,13 @@ class PulgaresViewModel(
                 grupoId,
                 colegas.map { if (it.id == colega.id) it.copy(nombre = nombre) else it }
             )
+            sincronizaTrasCambio(grupoId)
         }
     }
 
     /** Deshace el ultimo bizum registrado por error. */
     fun borraPago(pagoId: String) {
-        viewModelScope.launch { repo.borraPago(pagoId) }
+        viewModelScope.launch { sincronizaTrasCambio(repo.borraPago(pagoId)) }
     }
 
     /**
@@ -336,27 +390,37 @@ class PulgaresViewModel(
                     version = System.currentTimeMillis()
                 )
             )
+            sincronizaTrasCambio(grupoId)
         }
     }
 
     fun borraGasto(gastoId: String) {
-        viewModelScope.launch { repo.borraGasto(gastoId) }
+        viewModelScope.launch { sincronizaTrasCambio(repo.borraGasto(gastoId)) }
     }
 
     fun votaGasto(gastoId: String, colegaId: String, arriba: Boolean) {
-        viewModelScope.launch { repo.votaGasto(gastoId, colegaId, arriba) }
+        viewModelScope.launch { sincronizaTrasCambio(repo.votaGasto(gastoId, colegaId, arriba)) }
     }
 
     fun registraPago(grupoId: String, deQuienId: String, aQuienId: String, importe: Long, nota: String? = null) {
-        viewModelScope.launch { repo.registraPago(grupoId, deQuienId, aQuienId, importe, nota) }
+        viewModelScope.launch {
+            repo.registraPago(grupoId, deQuienId, aQuienId, importe, nota)
+            sincronizaTrasCambio(grupoId)
+        }
     }
 
     fun guardaMiAvatar(monigote: Monigote) {
-        viewModelScope.launch { repo.guardaMiAvatar(monigote.serializa()) }
+        viewModelScope.launch {
+            repo.guardaMiAvatar(monigote.serializa())
+            sincronizaTodosLosCompartidos()
+        }
     }
 
     fun guardaAvatarDe(colegaId: String, monigote: Monigote) {
-        viewModelScope.launch { repo.guardaAvatarDe(colegaId, monigote.serializa()) }
+        viewModelScope.launch {
+            repo.guardaAvatarDe(colegaId, monigote.serializa())
+            sincronizaTodosLosCompartidos()
+        }
     }
 
     class Fabrica(

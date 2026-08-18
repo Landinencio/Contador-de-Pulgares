@@ -240,13 +240,22 @@ fun AppPulgares(
         pantalla.grupoAsociado?.let { vm.abreGrupo(it) }
     }
 
-    // Al abrir un grupo compartido se sincroniza en silencio: así los gastos de
-    // los demás y las solicitudes de entrar aparecen sin darle a ningún botón.
+    // Al arrancar la app se sincronizan todos los grupos compartidos, para que
+    // la portada (los saldos) ya refleje lo que apuntaron los demás.
+    LaunchedEffect(Unit) {
+        vm.sincronizaTodosLosCompartidos()
+    }
+
+    // Con un grupo compartido en pantalla se sincroniza en silencio: una vez al
+    // abrirlo y luego un pulso cada 30 segundos. Así, dos colegas con la app
+    // abierta a la vez se ven los gastos sin tocar nada (el pulso muere solo al
+    // salir del grupo, porque el LaunchedEffect se cancela al cambiar la clave).
     val grupoCompartidoAbierto = estadoGrupo?.grupo?.takeIf {
         it.compartido && it.id == pantalla.grupoAsociado
     }?.id
     LaunchedEffect(grupoCompartidoAbierto) {
-        grupoCompartidoAbierto?.let { grupoId ->
+        val grupoId = grupoCompartidoAbierto ?: return@LaunchedEffect
+        while (true) {
             vm.sincronizaEnSilencio(grupoId) { novedades ->
                 if (novedades.solicitudes.isNotEmpty()) {
                     avisa(
@@ -260,6 +269,7 @@ fun AppPulgares(
                     avisa(resumenSync(novedades))
                 }
             }
+            kotlinx.coroutines.delay(30_000)
         }
     }
 

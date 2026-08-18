@@ -219,6 +219,24 @@ class RepositorioNube(
         return remoto
     }
 
+    /** Empuja el nombre y el emoji del grupo a la nube (cualquier miembro). */
+    suspend fun editaGrupo(grupoId: String): Sincronizador.GrupoRemoto {
+        val estado = estadoLocal(grupoId)
+        val remotoId = estado.grupo.remotoId
+            ?: throw ClienteNube.ErrorNube(0, "Este grupo no está compartido")
+        val respuesta = cliente.editaGrupo(
+            identidad.uid(),
+            org.json.JSONObject()
+                .put("grupoId", remotoId)
+                .put("nombre", estado.grupo.nombre)
+                .put("emoji", estado.grupo.emoji)
+                .put("version", estado.grupo.version)
+        )
+        val remoto = Sincronizador.leeGrupo(respuesta.getJSONObject("grupo"), grupoId)
+        guardaLoQueLlega(estado, remoto)
+        return remoto
+    }
+
     /** Cambia el código del grupo (solo el dueño). */
     suspend fun rotaCodigo(grupoId: String): String {
         val estado = estadoLocal(grupoId)

@@ -165,7 +165,14 @@ class Repositorio(private val bd: BaseDatos) {
     }
 
     suspend fun renombraGrupo(grupo: Grupo, nombre: String, emoji: String) {
-        bd.grupos().guardaGrupo(grupo.copy(nombre = nombre, emoji = emoji).aEntidad())
+        bd.grupos().guardaGrupo(
+            grupo.copy(
+                nombre = nombre,
+                emoji = emoji,
+                // El nombre se edita: sube la version para ganar al sincronizar.
+                version = System.currentTimeMillis()
+            ).aEntidad()
+        )
     }
 
     suspend fun guardaColegas(grupoId: String, colegas: List<Colega>) {
@@ -182,6 +189,10 @@ class Repositorio(private val bd: BaseDatos) {
     }
 
     suspend fun borraGrupo(grupoId: String) = bd.grupos().borraGrupoEntero(grupoId)
+
+    /** Los ids locales de los grupos que estan compartidos en la nube. */
+    suspend fun idsDeGruposCompartidos(): List<String> =
+        bd.grupos().gruposDeUnaVez().filter { it.remotoId != null }.map { it.id }
 
     /**
      * Guarda un gasto. Se comprueba que el reparto sume el importe: la pantalla ya
@@ -203,8 +214,8 @@ class Repositorio(private val bd: BaseDatos) {
      * verdad haria que el otro movil devolviera el gasto en la siguiente
      * sincronizacion. En un grupo solo-local, fuera la fila y ya.
      */
-    suspend fun borraGasto(gastoId: String) {
-        val gasto = bd.gastos().gasto(gastoId) ?: return
+    suspend fun borraGasto(gastoId: String): String? {
+        val gasto = bd.gastos().gasto(gastoId) ?: return null
         val compartido = bd.grupos().grupoDeUnaVez(gasto.grupoId)?.remotoId != null
         if (compartido) {
             bd.gastos().guarda(
@@ -213,11 +224,12 @@ class Repositorio(private val bd: BaseDatos) {
         } else {
             bd.gastos().borraPorId(gastoId)
         }
+        return gasto.grupoId
     }
 
     /** Pulgar arriba/abajo de un colega a un gasto. Volver a votar lo quita. */
-    suspend fun votaGasto(gastoId: String, colegaId: String, arriba: Boolean) {
-        val gasto = bd.gastos().gasto(gastoId)?.aDominio() ?: return
+    suspend fun votaGasto(gastoId: String, colegaId: String, arriba: Boolean): String? {
+        val gasto = bd.gastos().gasto(gastoId)?.aDominio() ?: return null
         val yaVotoIgual = if (arriba) colegaId in gasto.pulgaresArriba else colegaId in gasto.pulgaresAbajo
         val actualizado = gasto.copy(
             pulgaresArriba = when {
@@ -234,6 +246,7 @@ class Repositorio(private val bd: BaseDatos) {
             version = System.currentTimeMillis()
         )
         bd.gastos().guarda(actualizado.aEntidad())
+        return gasto.grupoId
     }
 
     suspend fun registraPago(grupoId: String, deQuienId: String, aQuienId: String, importe: Long, nota: String?) {
@@ -252,8 +265,8 @@ class Repositorio(private val bd: BaseDatos) {
     }
 
     /** Igual que [borraGasto]: lapida si el grupo esta compartido. */
-    suspend fun borraPago(pagoId: String) {
-        val pago = bd.pagos().pagoPorId(pagoId) ?: return
+    suspend fun borraPago(pagoId: String): String? {
+        val pago = bd.pagos().pagoPorId(pagoId) ?: return null
         val compartido = bd.grupos().grupoDeUnaVez(pago.grupoId)?.remotoId != null
         if (compartido) {
             bd.pagos().guarda(
@@ -262,6 +275,7 @@ class Repositorio(private val bd: BaseDatos) {
         } else {
             bd.pagos().borraPorId(pagoId)
         }
+        return pago.grupoId
     }
 
     /** Cambia el avatar del colega que soy yo, en todos los grupos a la vez. */
