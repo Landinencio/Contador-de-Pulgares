@@ -61,7 +61,9 @@ fun DetalleGrupoScreen(
     onPagar: (Transferencia) -> Unit,
     onDarToque: (Colega, Long) -> Unit,
     onAbrirAjustes: () -> Unit,
-    onBorrarPago: (Pago) -> Unit
+    onBorrarPago: (Pago) -> Unit,
+    /** null = grupo sin compartir: el zumbido no tiene a dónde viajar. */
+    onZumbar: ((colegaId: String) -> Unit)? = null
 ) {
     val grupo = estado.grupo
     val yo = grupo.yo
@@ -158,7 +160,13 @@ fun DetalleGrupoScreen(
                     transferencia = transferencia,
                     estado = estado,
                     soyElQuePaga = transferencia.deQuienId == yo?.id,
-                    onPagar = { aPagar = transferencia }
+                    onPagar = { aPagar = transferencia },
+                    // Zumbar solo tiene sentido si me deben A MÍ: sacudo a mi deudor.
+                    onZumbar = if (onZumbar != null && transferencia.aQuienId == yo?.id) {
+                        { onZumbar(transferencia.deQuienId) }
+                    } else {
+                        null
+                    }
                 )
             }
         }
@@ -340,7 +348,8 @@ private fun FilaTransferencia(
     transferencia: Transferencia,
     estado: EstadoGrupo,
     soyElQuePaga: Boolean,
-    onPagar: () -> Unit
+    onPagar: () -> Unit,
+    onZumbar: (() -> Unit)? = null
 ) {
     val grupo = estado.grupo
     // El fondo rojo claro es fijo, asi que su tinta tambien: con la del tema,
@@ -379,6 +388,16 @@ private fun FilaTransferencia(
                     color = tinta,
                     colorPesetas = tintaSuave
                 )
+            }
+            if (onZumbar != null) {
+                BotonRedondo(
+                    contenido = "🐝",
+                    descripcion = "Mandar un zumbido a ${estado.grupo.nombreDe(transferencia.deQuienId)}",
+                    color = Paleta.MostazaPulgar,
+                    sombra = 2.dp,
+                    onClick = onZumbar
+                )
+                Spacer(Modifier.width(6.dp))
             }
             BotonRedondo(
                 contenido = if (soyElQuePaga) "Pagar" else "Cobrado",

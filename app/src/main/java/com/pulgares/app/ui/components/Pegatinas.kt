@@ -249,6 +249,9 @@ fun BotonRedondo(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text = contenido, style = tamanoTexto)
+        // El fondo de estos botones es SIEMPRE un color fijo de la paleta, asi
+        // que la tinta se elige por su luminancia. Sin esto, en modo oscuro el
+        // color del tema (claro) sobre CremaHundido dejaba "Cobrado" invisible.
+        Text(text = contenido, style = tamanoTexto, color = Paleta.textoSobre(color))
     }
 }

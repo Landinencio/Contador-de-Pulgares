@@ -33,10 +33,31 @@ class CobradorWorker(
         val nube = RepositorioNube(bd, repo, identidad)
 
         // La ronda por la nube: en silencio y sin dramas si no hay cobertura.
+        // Si en la sincronización caen zumbidos, se notifican aquí mismo: la
+        // nube los entrega una sola vez, así que o se enseñan ahora o se pierden.
         if (nube.disponible) {
             bd.grupos().gruposDeUnaVez()
                 .filter { it.remotoId != null }
-                .forEach { grupo -> runCatching { nube.sincroniza(grupo.id) } }
+                .forEach { grupo ->
+                    runCatching { nube.sincroniza(grupo.id) }.onSuccess { resultado ->
+                        resultado.zumbidos.forEach { zumbido ->
+                            val quien = repo.grupoDeUnaVez(grupo.id)?.grupo
+                                ?.colega(zumbido.deColegaId)?.nombre ?: "Alguien"
+                            Zumbador.zumba(applicationContext)
+                            Cobrador.notifica(
+                                applicationContext,
+                                Cobrador.Aviso(
+                                    titulo = "¡ZUMBIDO! 🐝",
+                                    texto = com.pulgares.app.frases.Frases.para(
+                                        com.pulgares.app.frases.Momento.ZUMBIDO,
+                                        quien = quien,
+                                        semilla = zumbido.creadoMillis
+                                    )
+                                )
+                            )
+                        }
+                    }
+                }
         }
 
         // ¿Cuánto debo, sumando todos los grupos, y desde hace cuánto?
@@ -81,6 +102,19 @@ class CobradorWorker(
 
         fun despide(context: Context) {
             WorkManager.getInstance(context).cancelUniqueWork(RONDA)
+        }
+
+        /**
+         * Asegura la ronda diaria sin el saludo inmediato. Se llama en cada
+         * arranque: como el cobrador viene contratado de fábrica, alguien tiene
+         * que dejar la ronda programada aunque nadie pulsara "contratar".
+         */
+        fun asegura(context: Context) {
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                RONDA,
+                ExistingPeriodicWorkPolicy.KEEP,
+                PeriodicWorkRequestBuilder<CobradorWorker>(1, TimeUnit.DAYS).build()
+            )
         }
     }
 }

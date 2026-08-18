@@ -35,7 +35,9 @@ class RepositorioNube(
         /** Peticiones de entrar esperando al dueño (vacío si no soy yo). */
         val solicitudes: List<Sincronizador.Solicitud> = emptyList(),
         /** Colegas creados a mano sin móvil, para asignarlos al aprobar. */
-        val colegasLibres: List<Colega> = emptyList()
+        val colegasLibres: List<Colega> = emptyList(),
+        /** Zumbidos que llegaron en esta sincronización (ya consumidos en la nube). */
+        val zumbidos: List<Sincronizador.Zumbido> = emptyList()
     )
 
     /**
@@ -237,6 +239,14 @@ class RepositorioNube(
         return remoto
     }
 
+    /** Manda un zumbido a un colega del grupo. Devuelve las veces acumuladas. */
+    suspend fun zumba(grupoId: String, aColegaId: String): Int {
+        val estado = estadoLocal(grupoId)
+        val remotoId = estado.grupo.remotoId
+            ?: throw ClienteNube.ErrorNube(0, "Este grupo no está compartido")
+        return cliente.zumba(identidad.uid(), remotoId, aColegaId).optInt("veces", 1)
+    }
+
     /** Cambia el código del grupo (solo el dueño). */
     suspend fun rotaCodigo(grupoId: String): String {
         val estado = estadoLocal(grupoId)
@@ -318,7 +328,8 @@ class RepositorioNube(
             gastosNuevos = gastos.count { it.id !in gastosAntes },
             pagosNuevos = pagos.count { it.id !in pagosAntes },
             solicitudes = remoto.solicitudes,
-            colegasLibres = remoto.colegas.filter { it.id in remoto.colegasLibres }
+            colegasLibres = remoto.colegas.filter { it.id in remoto.colegasLibres },
+            zumbidos = remoto.zumbidos
         )
     }
 

@@ -57,7 +57,10 @@ enum class Momento {
      * recuerda las deudas con una cortesia inquietante. Nunca insulta: amenaza
      * con educacion exquisita.
      */
-    COBRADOR
+    COBRADOR,
+
+    /** Te acaba de llegar un zumbido, como en los tiempos del Messenger. */
+    ZUMBIDO
 }
 
 object Frases {
@@ -290,6 +293,17 @@ object Frases {
         "El grupo me ha contratado. Cobro en frases. Usted debe {cuanto}."
     )
 
+    private val zumbido = listOf(
+        "¡ZUMBIDO! {quien} exige tu atención (y probablemente tu dinero).",
+        "{quien} te está zumbando. Como en 2006.",
+        "El móvil no está roto: es {quien} dándote un zumbido.",
+        "{quien} ha invocado el espíritu del Messenger.",
+        "Despierta: {quien} te zumba.",
+        "{quien} te sacude a distancia. La tecnología es maravillosa.",
+        "Zumbido de {quien}. El zumbido nunca murió, solo dormía.",
+        "{quien} dice que mires la app. Con cariño, pero que la mires."
+    )
+
     private val cabeceraMeDeben = listOf(
         "Te deben {cuanto}. Ve a por ello.",
         "{cuanto} a tu favor. Bien jugado.",
@@ -317,6 +331,7 @@ object Frases {
         Momento.CABECERA_DEBO -> cabeceraDebo
         Momento.CABECERA_ME_DEBEN -> cabeceraMeDeben
         Momento.COBRADOR -> cobrador
+        Momento.ZUMBIDO -> zumbido
     }
 
     /** Cuantas frases tiene el catalogo entero. Se presume de ello en Ajustes. */

@@ -65,6 +65,10 @@ class ClienteNube(
         return post(uid, "/pulgares/aprobar", cuerpo)
     }
 
+    /** El zumbido del Messenger: le llega al colega en su siguiente sync. */
+    suspend fun zumba(uid: String, grupoId: String, aColegaId: String): JSONObject =
+        post(uid, "/pulgares/zumba", JSONObject().put("grupoId", grupoId).put("aColegaId", aColegaId))
+
     suspend fun rechaza(uid: String, grupoId: String, solicitanteUid: String): JSONObject =
         post(uid, "/pulgares/rechazar", JSONObject().put("grupoId", grupoId).put("uid", solicitanteUid))
 

@@ -4,6 +4,8 @@
     <!-- Solo para la sincronizacion opcional de grupos; la app funciona offline. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- El zumbido del Messenger: la vibración es la gracia. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:allowBackup="true"

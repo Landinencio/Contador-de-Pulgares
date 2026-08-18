@@ -41,6 +41,9 @@ import com.pulgares.app.domain.model.Gasto
 import com.pulgares.app.frases.Frases
 import com.pulgares.app.frases.Momento
 import com.pulgares.app.notificaciones.CobradorWorker
+import com.pulgares.app.notificaciones.Zumbador
+import com.pulgares.app.ui.components.ZumbidoOverlay
+import androidx.compose.ui.graphics.graphicsLayer
 import com.pulgares.app.ui.PulgaresViewModel
 import com.pulgares.app.ui.components.LluviaDeConfeti
 import com.pulgares.app.ui.components.recuerdaCelebracion
@@ -185,7 +188,13 @@ fun AppPulgares(
     // ---- el contrato del Cobrador del Frac ----
     var cobradorContratado by remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(identidad) {
-        cobradorContratado = identidad?.cobradorContratado() ?: false
+        val contratado = identidad?.cobradorContratado() ?: false
+        cobradorContratado = contratado
+        // El cobrador viene de fábrica: si está contratado, la ronda diaria se
+        // asegura en cada arranque (nadie pulsó "contratar" para programarla).
+        if (contratado) {
+            CobradorWorker.asegura(contexto)
+        }
     }
     // En Android 13+ las notificaciones piden permiso en tiempo de ejecución;
     // se pide justo al contratar, que es cuando tiene sentido para el usuario.
@@ -196,6 +205,20 @@ fun AppPulgares(
             alcance.launch {
                 avisos.showSnackbar("Sin el permiso de notificaciones, el cobrador es mudo.")
             }
+        }
+    }
+
+    // El cobrador viene de fábrica, así que el permiso de notificaciones se pide
+    // una única vez al arrancar (insistir en cada arranque quema al usuario).
+    LaunchedEffect(cobradorContratado) {
+        if (cobradorContratado == true && identidad != null &&
+            !identidad.permisoNotisYaPedido() &&
+            Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(contexto, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            identidad.marcaPermisoNotisPedido()
+            pidePermisoNotificaciones.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
@@ -273,6 +296,22 @@ fun AppPulgares(
         }
     }
 
+    // ---- el zumbido: vibración y pantalla temblando, como en 2006 ----
+    val zumbido by vm.zumbidoRecibido.collectAsStateWithLifecycle()
+    val sacudida = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(zumbido?.id) {
+        val evento = zumbido ?: return@LaunchedEffect
+        Zumbador.zumba(contexto)
+        // Ocho bandazos y de vuelta al centro: el temblor clásico.
+        repeat(8) { i ->
+            sacudida.animateTo(
+                if (i % 2 == 0) 16f else -16f,
+                androidx.compose.animation.core.tween(durationMillis = 45)
+            )
+        }
+        sacudida.animateTo(0f, androidx.compose.animation.core.tween(durationMillis = 70))
+    }
+
     // Un grupo recién saldado merece confeti. Sin gastos no cuenta: estar a cero
     // porque no has gastado nada no es ningún logro.
     val grupoAbierto = estadoGrupo
@@ -317,7 +356,12 @@ fun AppPulgares(
         snackbarHost = { SnackbarHost(avisos) },
         containerColor = MaterialTheme.colorScheme.background
     ) { margenes ->
-        Box(modifier = Modifier.fillMaxSize().padding(margenes)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(margenes)
+                .graphicsLayer { translationX = sacudida.value }
+        ) {
             when (val actual = pantalla) {
                 Pantalla.Portada -> PortadaScreen(
                     grupos = grupos,
@@ -412,18 +456,52 @@ fun AppPulgares(
                                 )
                             },
                             onDarToque = { colega, deuda ->
-                                // De momento el toque es local: se avisa aqui. Cuando
-                                // se active la sincronizacion, saldra como notificacion
-                                // en el movil del moroso.
-                                avisa(
-                                    Frases.para(
-                                        Momento.TOQUE,
-                                        quien = colega.nombre,
-                                        centimos = deuda
+                                if (estado.grupo.compartido && vm.nubeDisponible) {
+                                    vm.zumba(
+                                        actual.grupoId,
+                                        colega.id,
+                                        onHecho = {
+                                            avisa(
+                                                Frases.para(
+                                                    Momento.TOQUE,
+                                                    quien = colega.nombre,
+                                                    centimos = deuda
+                                                )
+                                            )
+                                        },
+                                        onError = { avisa(it) }
                                     )
-                                )
+                                } else {
+                                    avisa(
+                                        Frases.para(
+                                            Momento.DEBES,
+                                            quien = colega.nombre,
+                                            centimos = deuda
+                                        )
+                                    )
+                                }
                             },
                             onAbrirAjustes = { pantalla = Pantalla.AjustesGrupo(actual.grupoId) },
+                            onZumbar = if (estado.grupo.compartido && vm.nubeDisponible) {
+                                { colegaId ->
+                                    vm.zumba(
+                                        actual.grupoId,
+                                        colegaId,
+                                        onHecho = { veces ->
+                                            avisa(
+                                                if (veces > 1) {
+                                                    "Zumbido nº$veces enviado. Insistencia nivel: acreedor."
+                                                } else {
+                                                    "Zumbido enviado. Que tiemble."
+                                                }
+                                            )
+                                        },
+                                        onError = { avisa(it) }
+                                    )
+                                }
+                            } else {
+                                null
+                            },
                             onBorrarPago = { pago ->
                                 vm.borraPago(pago.id)
                                 avisa("Bizum deshecho. Las cuentas vuelven a como estaban.")
@@ -665,6 +743,10 @@ fun AppPulgares(
 
             // Va al final del Box para caer por encima de cualquier pantalla.
             LluviaDeConfeti(dispara = celebrar, onFin = finCelebracion)
+
+            zumbido?.let { evento ->
+                ZumbidoOverlay(zumbido = evento, onVisto = { vm.zumbidoVisto() })
+            }
         }
     }
 }

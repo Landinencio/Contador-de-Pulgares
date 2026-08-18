@@ -80,6 +80,13 @@ object Sincronizador {
         return cuerpo
     }
 
+    /** Un zumbido entregado: quién te sacude y cuántas veces acumuladas. */
+    data class Zumbido(
+        val deColegaId: String,
+        val creadoMillis: Long,
+        val veces: Int
+    )
+
     /** Una petición de entrar al grupo, esperando al dueño. */
     data class Solicitud(
         val uid: String,
@@ -101,6 +108,8 @@ object Sincronizador {
         val colegasLibres: List<String>,
         /** Solo llegan si soy el dueño: es quien las aprueba. */
         val solicitudes: List<Solicitud>,
+        /** Zumbidos dirigidos a mí; el servidor los borra al entregarlos. */
+        val zumbidos: List<Zumbido>,
         val gastos: List<Gasto>,
         val pagos: List<Pago>
     )
@@ -169,6 +178,13 @@ object Sincronizador {
                     pedidaMillis = item.optLong("pedida")
                 )
             }.filterNot { it.uid.isBlank() },
+            zumbidos = json.optJSONArray("zumbidos").porCada { item ->
+                Zumbido(
+                    deColegaId = item.optString("de"),
+                    creadoMillis = item.optLong("creado"),
+                    veces = item.optInt("veces", 1)
+                )
+            }.filterNot { it.deColegaId.isBlank() },
             gastos = gastos,
             pagos = pagos
         )

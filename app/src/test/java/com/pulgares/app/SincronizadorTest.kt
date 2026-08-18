@@ -241,6 +241,25 @@ class SincronizadorTest {
     }
 
     @Test
+    fun `los zumbidos llegan con remitente y contador`() {
+        // Respuesta real del backend: Ana zumbó tres veces y se entrega UNA vez.
+        val json = JSONObject(
+            """
+            {"grupoId":"x","nombre":"Cañas","emoji":"🍻","codigo":"AAAAAA",
+             "zumbidos":[{"de":"col-ana","creado":1787070946889,"veces":3}]}
+            """.trimIndent()
+        )
+        val remoto = Sincronizador.leeGrupo(json, "local")
+        val zumbido = remoto.zumbidos.single()
+        assertEquals("col-ana", zumbido.deColegaId)
+        assertEquals(3, zumbido.veces)
+
+        // Sin el campo (respuesta vieja o sin zumbidos), lista vacía y en paz.
+        json.remove("zumbidos")
+        assertEquals(emptyList<Any>(), Sincronizador.leeGrupo(json, "local").zumbidos)
+    }
+
+    @Test
     fun `un grupo sin gastos ni colegas no revienta al leerlo`() {
         val json = JSONObject("""{"grupoId":"x","nombre":"Nuevo","emoji":"👥","codigo":"AAAAAA"}""")
         val remoto = Sincronizador.leeGrupo(json, "local")

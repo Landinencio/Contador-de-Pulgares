@@ -82,6 +82,40 @@ class PulgaresViewModel(
 
     private fun apuntaResultado(grupoId: String, resultado: RepositorioNube.Resultado) {
         _solicitudes.value = _solicitudes.value + (grupoId to resultado)
+        // Los zumbidos llegan consumidos de la nube: o se enseñan ahora o nunca.
+        if (resultado.zumbidos.isNotEmpty()) {
+            viewModelScope.launch {
+                val grupo = repo.grupoDeUnaVez(grupoId)?.grupo
+                val zumbido = resultado.zumbidos.maxByOrNull { it.creadoMillis } ?: return@launch
+                val quien = grupo?.colega(zumbido.deColegaId)
+                _zumbidoRecibido.value = ZumbidoRecibido(
+                    id = System.nanoTime(),
+                    nombre = quien?.nombre ?: "Alguien",
+                    avatar = quien?.avatar,
+                    veces = resultado.zumbidos.sumOf { it.veces }
+                )
+            }
+        }
+    }
+
+    /** Un zumbido recién llegado, para que la pantalla tiemble como es debido. */
+    data class ZumbidoRecibido(
+        val id: Long,
+        val nombre: String,
+        val avatar: String?,
+        val veces: Int
+    )
+
+    private val _zumbidoRecibido = MutableStateFlow<ZumbidoRecibido?>(null)
+    val zumbidoRecibido: StateFlow<ZumbidoRecibido?> = _zumbidoRecibido
+
+    fun zumbidoVisto() {
+        _zumbidoRecibido.value = null
+    }
+
+    /** Manda un zumbido a un colega del grupo. */
+    fun zumba(grupoId: String, aColegaId: String, onHecho: (Int) -> Unit, onError: (String) -> Unit) {
+        enLaNube(onError) { destino -> onHecho(destino.zumba(grupoId, aColegaId)) }
     }
 
     /** ¿Esta build lleva sincronización? Sin token, la app es 100% local. */

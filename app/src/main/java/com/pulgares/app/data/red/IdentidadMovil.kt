@@ -31,6 +31,7 @@ class IdentidadMovil(private val context: Context) {
     private val claveNombre = stringPreferencesKey("perfilNombre")
     private val claveAvatar = stringPreferencesKey("perfilAvatar")
     private val clavePendientes = stringPreferencesKey("solicitudesPendientes")
+    private val clavePermisoNotis = booleanPreferencesKey("permisoNotisPedido")
 
     // ---- el perfil: quién soy en todos los grupos ----
 
@@ -129,8 +130,12 @@ class IdentidadMovil(private val context: Context) {
 
     // ---- el contrato del Cobrador del Frac ----
 
+    /**
+     * De alta por defecto: el cobrador viene contratado de fábrica (petición de
+     * los testers). Despedirlo escribe false y se respeta para siempre.
+     */
     suspend fun cobradorContratado(): Boolean =
-        context.ajustes.data.first()[claveCobrador] ?: false
+        context.ajustes.data.first()[claveCobrador] ?: true
 
     suspend fun contrataCobrador(contratado: Boolean) {
         context.ajustes.edit { it[claveCobrador] = contratado }
@@ -141,6 +146,14 @@ class IdentidadMovil(private val context: Context) {
 
     suspend fun marcaAvisoCobrador(millis: Long) {
         context.ajustes.edit { it[claveUltimoAviso] = millis }
+    }
+
+    /** El permiso de notificaciones se pide UNA vez; insistir en cada arranque quema. */
+    suspend fun permisoNotisYaPedido(): Boolean =
+        context.ajustes.data.first()[clavePermisoNotis] ?: false
+
+    suspend fun marcaPermisoNotisPedido() {
+        context.ajustes.edit { it[clavePermisoNotis] = true }
     }
 
     suspend fun recuperacionDe(remotoId: String): String? =
