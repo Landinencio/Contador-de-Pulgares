@@ -37,7 +37,13 @@ class RepositorioNube(
         /** Colegas creados a mano sin móvil, para asignarlos al aprobar. */
         val colegasLibres: List<Colega> = emptyList(),
         /** Zumbidos que llegaron en esta sincronización (ya consumidos en la nube). */
-        val zumbidos: List<Sincronizador.Zumbido> = emptyList()
+        val zumbidos: List<Sincronizador.Zumbido> = emptyList(),
+        /** La votación del nombre en marcha, si hay alguna. */
+        val votacion: Sincronizador.VotacionNombre? = null,
+        /** Cómo acabó la última votación (o el último cambio directo). */
+        val avisoNombre: Sincronizador.AvisoNombre? = null,
+        /** ¿Me queda el cambio de nombre gratis? */
+        val meQuedaCambioGratis: Boolean = true
     )
 
     /**
@@ -239,6 +245,44 @@ class RepositorioNube(
         return remoto
     }
 
+    /**
+     * Pide cambiar el nombre del grupo. Devuelve true si ya está hecho (le
+     * quedaba el cambio gratis, o no hay nadie más con móvil a quien preguntar) y
+     * false si ha quedado una votación abierta.
+     */
+    suspend fun proponeNombre(grupoId: String, nombre: String, emoji: String): Boolean {
+        val estado = estadoLocal(grupoId)
+        val remotoId = estado.grupo.remotoId
+            ?: throw ClienteNube.ErrorNube(0, "Este grupo no está compartido")
+        val respuesta = cliente.proponeNombre(
+            identidad.uid(),
+            remotoId,
+            nombre,
+            emoji,
+            estado.grupo.yo?.nombre ?: "Alguien"
+        )
+        val remoto = Sincronizador.leeGrupo(respuesta.getJSONObject("grupo"), grupoId)
+        guardaLoQueLlega(estado, remoto)
+        return respuesta.optBoolean("aplicado", false)
+    }
+
+    /**
+     * Vota la propuesta abierta. Devuelve null si aún faltan votos, y true/false
+     * cuando ya se ha resuelto (aprobada o rechazada).
+     */
+    suspend fun votaNombre(grupoId: String, aFavor: Boolean): Boolean? {
+        val estado = estadoLocal(grupoId)
+        val remotoId = estado.grupo.remotoId
+            ?: throw ClienteNube.ErrorNube(0, "Este grupo no está compartido")
+        val respuesta = cliente.votaNombre(identidad.uid(), remotoId, aFavor)
+        if (!respuesta.optBoolean("resuelta", false)) return null
+        // Al resolverse vuelve el grupo entero: hay que aplicar el nombre nuevo.
+        respuesta.optJSONObject("grupo")?.let { grupo ->
+            guardaLoQueLlega(estado, Sincronizador.leeGrupo(grupo, grupoId))
+        }
+        return respuesta.optBoolean("aprobada", false)
+    }
+
     /** Manda un zumbido a un colega del grupo. Devuelve las veces acumuladas. */
     suspend fun zumba(grupoId: String, aColegaId: String): Int {
         val estado = estadoLocal(grupoId)
@@ -329,7 +373,10 @@ class RepositorioNube(
             pagosNuevos = pagos.count { it.id !in pagosAntes },
             solicitudes = remoto.solicitudes,
             colegasLibres = remoto.colegas.filter { it.id in remoto.colegasLibres },
-            zumbidos = remoto.zumbidos
+            zumbidos = remoto.zumbidos,
+            votacion = remoto.votacion,
+            avisoNombre = remoto.avisoNombre,
+            meQuedaCambioGratis = remoto.meQuedaCambioGratis
         )
     }
 

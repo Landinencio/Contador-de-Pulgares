@@ -37,6 +37,7 @@ import com.pulgares.app.domain.model.Dinero
 import com.pulgares.app.domain.model.Gasto
 import com.pulgares.app.domain.model.Pago
 import com.pulgares.app.domain.settlement.Transferencia
+import com.pulgares.app.frases.Chascarrillos
 import com.pulgares.app.frases.Frases
 import com.pulgares.app.frases.Momento
 import com.pulgares.app.ui.components.BotonPegatina
@@ -453,6 +454,9 @@ private fun FilaGasto(
     val grupo = estado.grupo
     val loMio = gasto.deudas()[miId] ?: 0L
     val medalla = Frases.medallaPulgares(gasto.saldoPulgares)
+    // El fiscal anticorrupcion del grupo: con el id como semilla, la coña del
+    // gasto no cambia nunca (si no, bailaba en cada recomposicion).
+    val sospecha = Chascarrillos.para(gasto.concepto, gasto.id.hashCode().toLong())
 
     Pegatina(modifier = Modifier.fillMaxWidth(), onClick = onClick, sombra = 3.dp) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -483,6 +487,15 @@ private fun FilaGasto(
                         )
                     }
                 }
+            }
+
+            if (sospecha != null) {
+                Spacer(Modifier.height(8.dp))
+                Chapa(
+                    texto = "🕵️ $sospecha",
+                    color = Paleta.MostazaSuave,
+                    colorTexto = Paleta.Tinta
+                )
             }
 
             Spacer(Modifier.height(8.dp))

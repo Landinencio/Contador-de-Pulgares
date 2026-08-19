@@ -78,6 +78,27 @@ class ClienteNube(
     suspend fun editaGrupo(uid: String, cuerpo: JSONObject): JSONObject =
         post(uid, "/pulgares/editar", cuerpo)
 
+    /** Propone (o aplica, si le queda el gratis) un nombre nuevo para el grupo. */
+    suspend fun proponeNombre(
+        uid: String,
+        grupoId: String,
+        nombre: String,
+        emoji: String,
+        quien: String
+    ): JSONObject = post(
+        uid,
+        "nombre-propone",
+        JSONObject()
+            .put("grupoId", grupoId)
+            .put("nombre", nombre)
+            .put("emoji", emoji)
+            .put("quien", quien)
+    )
+
+    /** Un sí o un no a la propuesta que hay abierta. */
+    suspend fun votaNombre(uid: String, grupoId: String, aFavor: Boolean): JSONObject =
+        post(uid, "nombre-vota", JSONObject().put("grupoId", grupoId).put("aFavor", aFavor))
+
     suspend fun rotaCodigo(uid: String, grupoId: String): JSONObject =
         post(uid, "/pulgares/rotar", JSONObject().put("grupoId", grupoId))
 

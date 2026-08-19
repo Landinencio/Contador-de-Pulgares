@@ -59,6 +59,15 @@ enum class Momento {
      */
     COBRADOR,
 
+    /** El grupo se acaba de llamar de otra manera. */
+    NOMBRE_GRUPO,
+
+    /** A un colega le han cambiado el nombre. {quien} = el viejo, {que} = el nuevo. */
+    NOMBRE_COLEGA,
+
+    /** Alguien propone renombrar el grupo y toca votar. */
+    NOMBRE_A_VOTACION,
+
     /** Te acaba de llegar un zumbido, como en los tiempos del Messenger. */
     ZUMBIDO
 }
@@ -234,6 +243,37 @@ object Frases {
         "Toque puesto en su bandeja. Ahora toca esperar y desconfiar."
     )
 
+    private val nombreGrupo = listOf(
+        "Hecho: el grupo ahora se llama «{que}». Que conste en acta.",
+        "Rebautizado. Ahora esto es «{que}» y no se hable más.",
+        "«{que}». Cambio guardado, notario ausente.",
+        "Listo. El grupo responde a «{que}» desde este mismo instante.",
+        "Ya está: «{que}». El anterior nombre pasa a la historia.",
+        "Nombre nuevo, mismas deudas: bienvenido a «{que}».",
+        "Guardado. «{que}» queda inscrito en el registro de grupos cachondos.",
+        "Cambiado a «{que}». Nadie recordará cómo se llamaba antes."
+    )
+
+    private val nombreColega = listOf(
+        "{quien} pasa a llamarse «{que}». Sin cirugía y sin papeleo.",
+        "Hecho: donde decía {quien}, ahora dice «{que}».",
+        "{quien} ya es «{que}». Que se acostumbre.",
+        "Rebautizado: {quien} → «{que}». Guardado y firmado.",
+        "A {quien} le has puesto «{que}». Espero que se lo tome bien.",
+        "«{que}» sustituye a {quien}. La deuda, intacta.",
+        "{quien} responde ahora a «{que}». El saldo no ha cambiado, tranquilo.",
+        "Cambio guardado: {quien} es «{que}» a todos los efectos."
+    )
+
+    private val nombreAVotacion = listOf(
+        "{quien} quiere llamar a esto «{que}». Se abre urna.",
+        "Propuesta sobre la mesa: «{que}», cortesía de {quien}. A votar.",
+        "{quien} ya gastó su cambio gratis, así que «{que}» pasa por las urnas.",
+        "Referéndum: {quien} propone «{que}». Tú decides.",
+        "{quien} insiste en cambiar el nombre. Quiere «{que}». Vota con la cabeza.",
+        "A votación: «{que}». Lo propone {quien}, que ya va por el segundo intento."
+    )
+
     private val sinGastos = listOf(
         "Aquí no hay ni un gasto. Sospechoso.",
         "Grupo vacío. ¿De verdad no habéis gastado nada? Mentirosos.",
@@ -332,6 +372,9 @@ object Frases {
         Momento.CABECERA_ME_DEBEN -> cabeceraMeDeben
         Momento.COBRADOR -> cobrador
         Momento.ZUMBIDO -> zumbido
+        Momento.NOMBRE_GRUPO -> nombreGrupo
+        Momento.NOMBRE_COLEGA -> nombreColega
+        Momento.NOMBRE_A_VOTACION -> nombreAVotacion
     }
 
     /** Cuantas frases tiene el catalogo entero. Se presume de ello en Ajustes. */
@@ -420,6 +463,16 @@ object Frases {
         "Hacienda en persona",
         "Plaga bíblica",
         "Despertador del apocalipsis",
+        "Taladro de las ocho de la mañana",
+        "Vecino del piso de arriba",
+        "Testigo de Jehová un domingo",
+        "Comercial de telefonía",
+        "Llamada de un número desconocido",
+        "Alarma de coche a las tres",
+        "Gaviota en un camping",
+        "Grupo de guasap de la familia",
+        "Mosquito a oscuras",
+        "Cobrador cósmico",
         "Deidad del zumbido"
     )
 
@@ -434,6 +487,54 @@ object Frases {
     fun chapaZumbido(veces: Int): String {
         val nivel = "nivel ${nivelZumbido(veces)} — ${rangoZumbido(veces)}"
         return if (veces > 1) "×$veces · $nivel" else nivel
+    }
+
+    // Sermones para el pesado del zumbido, segun por donde vaya el mes. La
+    // nomina manda: a principios no hay excusa, a finales no hay dinero.
+    private val sermonPrincipioDeMes = listOf(
+        "Y encima recién cobrado. Contrólate, campeón.",
+        "Estamos a principios de mes: ese dinero existe. Pero contrólate.",
+        "Acabas de cobrar y ya estás zumbando. Respira.",
+        "Con la nómina calentita y tú dando por saco. Bonito.",
+        "A estas alturas del mes nadie tiene excusa, pero tú tampoco.",
+        "Recién pagada la nómina y tú con el dedo en el timbre."
+    )
+
+    private val sermonMitadDeMes = listOf(
+        "Mitad de mes: territorio neutral. Aún se puede negociar.",
+        "Vamos por la mitad del mes, la cosa está regular para todos.",
+        "Ni principios ni finales. Zumba con moderación.",
+        "Media maratón del mes. Guarda fuerzas para el día 28.",
+        "Mitad de mes, mitad de esperanza. Sigue insistiendo con clase."
+    )
+
+    private val sermonFinalDeMes = listOf(
+        "Entiendo que estamos a finales y no queda un mango. Tranquilo, acabará pagando.",
+        "Final de mes: ahí no hay dinero ni buscándolo con perro. Paciencia.",
+        "A estas alturas del mes la cartera es un ecosistema desértico. Ya te pagará.",
+        "Estamos a finales. Ese que zumbas está comiendo arroz blanco. Ten piedad.",
+        "Fin de mes, cuentas en números rojos para todos. Espera al día 1.",
+        "Queda nada para la nómina. Aguanta, que el día 1 cobra y le vuelves a zumbar."
+    )
+
+    /**
+     * Un comentario para el que se pasa zumbando, segun por donde ande el mes.
+     * Solo aparece cuando ya lleva unos cuantos ([veces] >= 4, o sea nivel 2):
+     * al primer zumbido nadie necesita un sermon.
+     */
+    fun sermonZumbador(veces: Int, diaDelMes: Int, semilla: Long? = null): String? {
+        if (veces < 4) return null
+        val lista = when {
+            diaDelMes <= 10 -> sermonPrincipioDeMes
+            diaDelMes <= 20 -> sermonMitadDeMes
+            else -> sermonFinalDeMes
+        }
+        val indice = if (semilla == null) {
+            Random.nextInt(lista.size)
+        } else {
+            ((semilla % lista.size) + lista.size).toInt() % lista.size
+        }
+        return lista[indice]
     }
 
     /** Rango del que siempre pone la tarjeta. */

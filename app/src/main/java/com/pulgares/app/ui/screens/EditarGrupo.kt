@@ -28,9 +28,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pulgares.app.avatar.AvatarMonigote
 import com.pulgares.app.data.EstadoGrupo
+import com.pulgares.app.data.red.Sincronizador
 import com.pulgares.app.domain.model.Colega
 import com.pulgares.app.domain.model.Dinero
 import com.pulgares.app.frases.Frases
+import com.pulgares.app.frases.Momento
 import com.pulgares.app.ui.components.BotonPegatina
 import com.pulgares.app.ui.components.BotonRedondo
 import com.pulgares.app.ui.components.Chapa
@@ -52,10 +54,17 @@ private val emojis = listOf(
 fun EditarGrupoScreen(
     estado: EstadoGrupo,
     onGuardarNombre: (String, String) -> Unit,
+    /** La votación del nombre en marcha, si hay alguna. */
+    votacion: Sincronizador.VotacionNombre? = null,
+    /** ¿Me queda mi cambio de nombre gratis? Si no, el segundo va a las urnas. */
+    meQuedaCambioGratis: Boolean = true,
+    onVotarNombre: (Boolean) -> Unit = {},
     onAnadirColega: (String) -> Unit,
     onQuitarColega: (Colega) -> Unit,
     onEditarAvatarDe: (Colega) -> Unit,
     onRenombrarColega: (Colega, String) -> Unit,
+    /** Se avisa cuando alguien intenta rebautizar a quien no le debe nada. */
+    onRenombrarBloqueado: (Colega) -> Unit = {},
     onReadmitirColega: (Colega) -> Unit,
     onBorrarGrupo: () -> Unit,
     onVolver: () -> Unit,
@@ -119,15 +128,98 @@ fun EditarGrupoScreen(
                             }
                         }
                     }
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(10.dp))
+                    // El nombre del grupo es de todos: el primer cambio de cada
+                    // uno es gratis y el segundo se somete a votación. Cambiar
+                    // solo el icono nunca pasa por las urnas.
+                    val soloElIcono = nombre.trim() == grupo.nombre
+                    val aLasUrnas = grupo.compartido && !meQuedaCambioGratis && !soloElIcono
+                    Text(
+                        text = when {
+                            !grupo.compartido -> "Grupo solo tuyo: aquí mandas tú."
+                            soloElIcono -> "El icono se cambia sin preguntar a nadie."
+                            meQuedaCambioGratis ->
+                                "Te queda tu cambio de nombre gratis. El siguiente, a votación."
+                            else ->
+                                "Ya gastaste tu cambio gratis: esto se somete al voto del grupo."
+                        },
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(10.dp))
                     BotonPegatina(
-                        texto = "Guardar nombre e icono",
-                        emoji = "✏️",
+                        texto = if (aLasUrnas) "Proponer nombre al grupo" else "Guardar nombre e icono",
+                        emoji = if (aLasUrnas) "🗳️" else "✏️",
                         habilitado = nombre.isNotBlank() &&
-                            (nombre != grupo.nombre || emoji != grupo.emoji),
+                            (nombre != grupo.nombre || emoji != grupo.emoji) &&
+                            votacion == null,
                         onClick = { onGuardarNombre(nombre.trim(), emoji) },
                         modifier = Modifier.fillMaxWidth()
                     )
+                }
+            }
+        }
+
+        // ---- la votación del nombre ----
+        if (votacion != null) {
+            item {
+                Pegatina(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Paleta.MostazaSuave,
+                    sombra = 4.dp
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Chapa(texto = "🗳️ Votación en marcha", color = Paleta.RosaChicle, colorTexto = Paleta.Papel)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = if (votacion.esMia) {
+                                "Has propuesto «${votacion.emoji} ${votacion.nombre}». " +
+                                    "Ahora que decidan los demás."
+                            } else {
+                                Frases.para(
+                                    Momento.NOMBRE_A_VOTACION,
+                                    quien = votacion.quien,
+                                    que = votacion.nombre,
+                                    semilla = votacion.creadoMillis
+                                )
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Paleta.Tinta
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "A favor ${votacion.aFavor} · en contra ${votacion.enContra} " +
+                                "· votan ${votacion.votantes}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Paleta.TintaSuave
+                        )
+                        if (!votacion.esMia && !votacion.heVotado) {
+                            Spacer(Modifier.height(12.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                BotonPegatina(
+                                    texto = "Me parece bien",
+                                    emoji = "👍",
+                                    color = Paleta.VerdePaz,
+                                    onClick = { onVotarNombre(true) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                BotonPegatina(
+                                    texto = "Ni de coña",
+                                    emoji = "👎",
+                                    color = Paleta.RojoDeuda,
+                                    onClick = { onVotarNombre(false) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        } else if (votacion.heVotado) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = "Ya has votado. Ahora toca esperar a los demás.",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = Paleta.Tinta
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -146,15 +238,24 @@ fun EditarGrupoScreen(
                 modifier = Modifier.padding(top = 6.dp)
             )
             Text(
-                text = "Toca un monigote para cambiárselo.",
+                text = "Toca un monigote para cambiárselo. El nombre, solo el tuyo " +
+                    "y el de quien te deba dinero.",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
+        // Rebautizar al resto se caparon: los nombres ajenos son suyos, no tuyos.
+        // La unica excepcion es el que te debe dinero, que se lo ha ganado.
+        val misDeudores = estado.plan
+            .filter { it.aQuienId == grupo.yo?.id }
+            .map { it.deQuienId }
+            .toSet()
+
         items(grupo.activos, key = { it.id }) { colega ->
             FilaColega(
                 colega = colega,
+                puedeRenombrarse = colega.soyYo || colega.id in misDeudores,
                 saldo = estado.saldoDe(colega.id),
                 puestoPorEl = estado.gastos.filter { it.pagadorId == colega.id }
                     .sumOf { it.importeCentimos },
@@ -162,6 +263,7 @@ fun EditarGrupoScreen(
                 puedeQuitarse = !colega.soyYo && grupo.activos.size > 2,
                 onEditarAvatar = { onEditarAvatarDe(colega) },
                 onRenombrar = { onRenombrarColega(colega, it) },
+                onRenombrarBloqueado = { onRenombrarBloqueado(colega) },
                 onQuitar = { aQuitar = colega }
             )
         }
@@ -366,8 +468,10 @@ private fun FilaColega(
     puestoPorEl: Long,
     cuantosGastos: Int,
     puedeQuitarse: Boolean,
+    puedeRenombrarse: Boolean,
     onEditarAvatar: () -> Unit,
     onRenombrar: (String) -> Unit,
+    onRenombrarBloqueado: () -> Unit,
     onQuitar: () -> Unit
 ) {
     var editando by remember { mutableStateOf(false) }
@@ -431,9 +535,16 @@ private fun FilaColega(
                     )
                 } else {
                     BotonRedondo(
-                        contenido = "✏️",
-                        descripcion = "Cambiar el nombre de ${colega.nombre}",
-                        onClick = { editando = true },
+                        contenido = if (puedeRenombrarse) "✏️" else "🔒",
+                        descripcion = if (puedeRenombrarse) {
+                            "Cambiar el nombre de ${colega.nombre}"
+                        } else {
+                            "No puedes cambiarle el nombre a ${colega.nombre}"
+                        },
+                        onClick = {
+                            if (puedeRenombrarse) editando = true else onRenombrarBloqueado()
+                        },
+                        color = if (puedeRenombrarse) Paleta.Papel else Paleta.CremaHundido,
                         sombra = 2.dp
                     )
                     if (puedeQuitarse) {

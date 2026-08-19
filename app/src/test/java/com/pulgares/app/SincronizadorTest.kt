@@ -10,6 +10,8 @@ import com.pulgares.app.domain.settlement.Cuentas
 import com.pulgares.app.domain.model.Colega
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -238,6 +240,48 @@ class SincronizadorTest {
         // Y si el backend no manda el campo (no soy el dueño), lista vacía.
         json.remove("solicitudes")
         assertEquals(emptyList<Any>(), Sincronizador.leeGrupo(json, "local").solicitudes)
+    }
+
+    @Test
+    fun `la votacion del nombre y su resultado llegan enteros`() {
+        val json = JSONObject(
+            """
+            {"grupoId":"x","nombre":"Cañas","emoji":"🍻","codigo":"AAAAAA",
+             "meQuedaCambioGratis":false,
+             "votacionNombre":{"nombre":"Los morosos","emoji":"💀","quien":"Ana",
+                               "creado":1787151083149,"aFavor":1,"enContra":2,
+                               "votantes":4,"heVotado":true,"esMia":false},
+             "avisoNombre":{"resultado":"rechazada","nombre":"Los morosos",
+                            "quien":"Ana","creado":1787151085229}}
+            """.trimIndent()
+        )
+        val remoto = Sincronizador.leeGrupo(json, "local")
+
+        val votacion = remoto.votacion!!
+        assertEquals("Los morosos", votacion.nombre)
+        assertEquals("Ana", votacion.quien)
+        assertEquals(1, votacion.aFavor)
+        assertEquals(2, votacion.enContra)
+        assertEquals(4, votacion.votantes)
+        assertTrue(votacion.heVotado)
+        assertFalse(votacion.esMia)
+
+        val aviso = remoto.avisoNombre!!
+        assertEquals("rechazada", aviso.resultado)
+        assertEquals("Los morosos", aviso.nombre)
+        assertEquals(1787151085229L, aviso.creadoMillis)
+
+        assertFalse(remoto.meQuedaCambioGratis)
+
+        // Una respuesta vieja (backend sin votaciones) no revienta: nada abierto,
+        // nada que cantar, y el cambio gratis se supone disponible.
+        val vieja = Sincronizador.leeGrupo(
+            JSONObject("""{"grupoId":"x","nombre":"Cañas","codigo":"AAAAAA"}"""),
+            "local"
+        )
+        assertNull(vieja.votacion)
+        assertNull(vieja.avisoNombre)
+        assertTrue(vieja.meQuedaCambioGratis)
     }
 
     @Test

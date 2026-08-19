@@ -82,6 +82,24 @@ class PulgaresViewModel(
 
     private fun apuntaResultado(grupoId: String, resultado: RepositorioNube.Resultado) {
         _solicitudes.value = _solicitudes.value + (grupoId to resultado)
+        // El resultado del último cambio de nombre: la nube se lo cuenta a todos y
+        // cada móvil lo canta una vez (por su marca de tiempo).
+        val aviso = resultado.avisoNombre
+        if (aviso != null && identidad != null) {
+            viewModelScope.launch {
+                if (aviso.creadoMillis > identidad.avisoNombreVisto(grupoId)) {
+                    identidad.marcaAvisoNombreVisto(grupoId, aviso.creadoMillis)
+                    _avisoNombre.value = when (aviso.resultado) {
+                        "aprobada" -> "Votación ganada: el grupo pasa a ser «${aviso.nombre}»."
+                        "rechazada" ->
+                            "Votación perdida: «${aviso.nombre}» se queda en el cajón. " +
+                                "El grupo sigue como estaba."
+                        else -> "${aviso.quien} ha rebautizado el grupo: «${aviso.nombre}»."
+                    }
+                }
+            }
+        }
+
         // Los zumbidos llegan consumidos de la nube: o se enseñan ahora o nunca.
         if (resultado.zumbidos.isNotEmpty()) {
             viewModelScope.launch {
@@ -95,6 +113,63 @@ class PulgaresViewModel(
                     veces = resultado.zumbidos.sumOf { it.veces }
                 )
             }
+        }
+    }
+
+    // ---- el nombre del grupo: cambio gratis, votación y resultado ----
+
+    private val _avisoNombre = MutableStateFlow<String?>(null)
+
+    /** Un texto que contar una vez: cómo acabó el último cambio de nombre. */
+    val avisoNombre: StateFlow<String?> = _avisoNombre
+
+    fun avisoNombreVisto() {
+        _avisoNombre.value = null
+    }
+
+    /**
+     * Cambia el nombre del grupo. En grupos compartidos pasa por la nube: si le
+     * queda el cambio gratis se aplica, y si no abre una votación. [onHecho] dice
+     * si quedó aplicado (true) o a la espera de votos (false).
+     */
+    fun proponeNombreGrupo(
+        grupo: com.pulgares.app.domain.model.Grupo,
+        nombre: String,
+        emoji: String,
+        onHecho: (aplicado: Boolean) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        // Sin compartir no hay a quién preguntar: se cambia y punto.
+        if (!grupo.compartido || nube?.disponible != true) {
+            renombraGrupo(grupo, nombre, emoji)
+            onHecho(true)
+            return
+        }
+        // Solo el emoji no merece un referéndum: eso va por la vía rápida.
+        if (nombre == grupo.nombre) {
+            renombraGrupo(grupo, nombre, emoji)
+            onHecho(true)
+            return
+        }
+        enLaNube(onError) { destino ->
+            val aplicado = destino.proponeNombre(grupo.id, nombre, emoji)
+            if (aplicado) repo.renombraGrupo(grupo, nombre, emoji)
+            sincroniza(grupo.id, onHecho = {}, onError = {})
+            onHecho(aplicado)
+        }
+    }
+
+    /** Vota la propuesta abierta. [onHecho] trae null si aún faltan votos. */
+    fun votaNombre(
+        grupoId: String,
+        aFavor: Boolean,
+        onHecho: (aprobada: Boolean?) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        enLaNube(onError) { destino ->
+            val resuelta = destino.votaNombre(grupoId, aFavor)
+            sincroniza(grupoId, onHecho = {}, onError = {})
+            onHecho(resuelta)
         }
     }
 

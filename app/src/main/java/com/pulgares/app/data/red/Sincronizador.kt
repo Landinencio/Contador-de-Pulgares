@@ -87,6 +87,32 @@ object Sincronizador {
         val veces: Int
     )
 
+    /** Una propuesta de nombre esperando los votos del grupo. */
+    data class VotacionNombre(
+        val nombre: String,
+        val emoji: String,
+        val quien: String,
+        val creadoMillis: Long,
+        val aFavor: Int,
+        val enContra: Int,
+        val votantes: Int,
+        val heVotado: Boolean,
+        val esMia: Boolean
+    )
+
+    /**
+     * Cómo acabó el último cambio de nombre. A diferencia de los zumbidos esto no
+     * se consume al entregarlo: lo tienen que ver todos los móviles, y ninguno
+     * sabe de los demás, así que cada uno se apunta en local el último que cantó.
+     */
+    data class AvisoNombre(
+        /** "directo" (cambio gratis), "sinVotantes", "aprobada" o "rechazada". */
+        val resultado: String,
+        val nombre: String,
+        val quien: String,
+        val creadoMillis: Long
+    )
+
     /** Una petición de entrar al grupo, esperando al dueño. */
     data class Solicitud(
         val uid: String,
@@ -110,6 +136,12 @@ object Sincronizador {
         val solicitudes: List<Solicitud>,
         /** Zumbidos dirigidos a mí; el servidor los borra al entregarlos. */
         val zumbidos: List<Zumbido>,
+        /** La votación del nombre en marcha, si hay alguna. */
+        val votacion: VotacionNombre?,
+        /** Cómo acabó la última, para cantarlo una vez. */
+        val avisoNombre: AvisoNombre?,
+        /** ¿Me queda mi cambio de nombre gratis? */
+        val meQuedaCambioGratis: Boolean,
         val gastos: List<Gasto>,
         val pagos: List<Pago>
     )
@@ -185,6 +217,28 @@ object Sincronizador {
                     veces = item.optInt("veces", 1)
                 )
             }.filterNot { it.deColegaId.isBlank() },
+            votacion = json.optJSONObject("votacionNombre")?.let { voto ->
+                VotacionNombre(
+                    nombre = voto.optString("nombre"),
+                    emoji = voto.optString("emoji"),
+                    quien = voto.optString("quien").ifBlank { "Alguien" },
+                    creadoMillis = voto.optLong("creado"),
+                    aFavor = voto.optInt("aFavor"),
+                    enContra = voto.optInt("enContra"),
+                    votantes = voto.optInt("votantes"),
+                    heVotado = voto.optBoolean("heVotado", false),
+                    esMia = voto.optBoolean("esMia", false)
+                )
+            },
+            avisoNombre = json.optJSONObject("avisoNombre")?.let { aviso ->
+                AvisoNombre(
+                    resultado = aviso.optString("resultado"),
+                    nombre = aviso.optString("nombre"),
+                    quien = aviso.optString("quien").ifBlank { "Alguien" },
+                    creadoMillis = aviso.optLong("creado")
+                )
+            },
+            meQuedaCambioGratis = json.optBoolean("meQuedaCambioGratis", true),
             gastos = gastos,
             pagos = pagos
         )

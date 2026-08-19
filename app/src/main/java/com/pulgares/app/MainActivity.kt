@@ -38,6 +38,7 @@ import com.pulgares.app.data.local.BaseDatos
 import com.pulgares.app.data.red.IdentidadMovil
 import com.pulgares.app.domain.model.Dinero
 import com.pulgares.app.domain.model.Gasto
+import com.pulgares.app.frases.Chascarrillos
 import com.pulgares.app.frases.Frases
 import com.pulgares.app.frases.Momento
 import com.pulgares.app.notificaciones.CobradorWorker
@@ -67,6 +68,7 @@ import com.pulgares.app.ui.screens.PerfilScreen
 import com.pulgares.app.ui.screens.PortadaScreen
 import com.pulgares.app.ui.theme.TemaPulgares
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
 
@@ -296,6 +298,16 @@ fun AppPulgares(
         }
     }
 
+    // El resultado del cambio de nombre: lo canta el que lo hizo y también los
+    // demás cuando les llega por la sincronización (era justo la queja: cambiabas
+    // el nombre y nadie se enteraba de nada).
+    val avisoNombre by vm.avisoNombre.collectAsStateWithLifecycle()
+    LaunchedEffect(avisoNombre) {
+        val texto = avisoNombre ?: return@LaunchedEffect
+        avisa(texto)
+        vm.avisoNombreVisto()
+    }
+
     // ---- el zumbido: vibración y pantalla temblando, como en 2006 ----
     val zumbido by vm.zumbidoRecibido.collectAsStateWithLifecycle()
     val sacudida = remember { androidx.compose.animation.core.Animatable(0f) }
@@ -490,14 +502,19 @@ fun AppPulgares(
                                         onHecho = { veces ->
                                             val nivel = Frases.nivelZumbido(veces)
                                             val rango = Frases.rangoZumbido(veces)
-                                            avisa(
-                                                if (veces > 1) {
-                                                    "Zumbido nº$veces enviado. " +
-                                                        "Nivel $nivel: $rango."
-                                                } else {
-                                                    "Zumbido enviado. Nivel $nivel: $rango."
-                                                }
+                                            val cabecera = if (veces > 1) {
+                                                "Zumbido nº$veces enviado. Nivel $nivel: $rango."
+                                            } else {
+                                                "Zumbido enviado. Nivel $nivel: $rango."
+                                            }
+                                            // Al pesado se le sermonea segun por
+                                            // donde vaya el mes: a principios no
+                                            // hay excusa, a finales no hay dinero.
+                                            val sermon = Frases.sermonZumbador(
+                                                veces = veces,
+                                                diaDelMes = LocalDate.now().dayOfMonth
                                             )
+                                            avisa(listOfNotNull(cabecera, sermon).joinToString(" "))
                                         },
                                         onError = { avisa(it) }
                                     )
@@ -520,9 +537,42 @@ fun AppPulgares(
                     } else {
                         EditarGrupoScreen(
                             estado = estado,
+                            votacion = solicitudesPorGrupo[actual.grupoId]?.votacion,
+                            meQuedaCambioGratis =
+                                solicitudesPorGrupo[actual.grupoId]?.meQuedaCambioGratis ?: true,
                             onGuardarNombre = { nombre, emoji ->
-                                vm.renombraGrupo(estado.grupo, nombre, emoji)
-                                avisa("Grupo actualizado.")
+                                vm.proponeNombreGrupo(
+                                    grupo = estado.grupo,
+                                    nombre = nombre,
+                                    emoji = emoji,
+                                    onHecho = { aplicado ->
+                                        avisa(
+                                            if (aplicado) {
+                                                Frases.para(Momento.NOMBRE_GRUPO, que = nombre)
+                                            } else {
+                                                "Propuesta lanzada: «$nombre». " +
+                                                    "Ahora que voten los demás."
+                                            }
+                                        )
+                                    },
+                                    onError = { avisa(it) }
+                                )
+                            },
+                            onVotarNombre = { aFavor ->
+                                vm.votaNombre(
+                                    actual.grupoId, aFavor,
+                                    onHecho = { aprobada ->
+                                        avisa(
+                                            when (aprobada) {
+                                                null -> "Voto registrado. Faltan los demás."
+                                                true -> "Aprobado: el grupo cambia de nombre."
+                                                false ->
+                                                    "Rechazado: el nombre se queda como estaba."
+                                            }
+                                        )
+                                    },
+                                    onError = { avisa(it) }
+                                )
                             },
                             onAnadirColega = { nombre ->
                                 vm.anadeColega(actual.grupoId, nombre, estado.grupo.colegas.size)
@@ -534,6 +584,19 @@ fun AppPulgares(
                             },
                             onRenombrarColega = { colega, nombre ->
                                 vm.renombraColega(actual.grupoId, estado.grupo.colegas, colega, nombre)
+                                avisa(
+                                    Frases.para(
+                                        Momento.NOMBRE_COLEGA,
+                                        quien = colega.nombre,
+                                        que = nombre
+                                    )
+                                )
+                            },
+                            onRenombrarBloqueado = { colega ->
+                                avisa(
+                                    "A ${colega.nombre} no le tocas el nombre: " +
+                                        "solo puedes rebautizar a quien te debe dinero."
+                                )
                             },
                             onReadmitirColega = { colega ->
                                 vm.readmiteColega(actual.grupoId, estado.grupo.colegas, colega)
@@ -671,13 +734,16 @@ fun AppPulgares(
                                     original = existente
                                 )
                                 pantalla = Pantalla.Grupo(actual.grupoId)
+                                // Si el concepto es de los turbios, habla el
+                                // fiscal en vez del narrador de siempre.
                                 avisa(
-                                    Frases.para(
-                                        Momento.GASTO_NUEVO,
-                                        quien = estado.grupo.nombreDe(pagadorId),
-                                        centimos = importe,
-                                        que = concepto
-                                    )
+                                    Chascarrillos.para(concepto)
+                                        ?: Frases.para(
+                                            Momento.GASTO_NUEVO,
+                                            quien = estado.grupo.nombreDe(pagadorId),
+                                            centimos = importe,
+                                            que = concepto
+                                        )
                                 )
                             },
                             onBorrar = existente?.let { gasto ->

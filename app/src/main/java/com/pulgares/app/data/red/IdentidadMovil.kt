@@ -32,6 +32,7 @@ class IdentidadMovil(private val context: Context) {
     private val claveAvatar = stringPreferencesKey("perfilAvatar")
     private val clavePendientes = stringPreferencesKey("solicitudesPendientes")
     private val clavePermisoNotis = booleanPreferencesKey("permisoNotisPedido")
+    private val claveAvisoNombre = stringPreferencesKey("avisoNombreVisto")
 
     // ---- el perfil: quién soy en todos los grupos ----
 
@@ -154,6 +155,28 @@ class IdentidadMovil(private val context: Context) {
 
     suspend fun marcaPermisoNotisPedido() {
         context.ajustes.edit { it[clavePermisoNotis] = true }
+    }
+
+    // ---- el último aviso de cambio de nombre que ya cantó este móvil ----
+    //
+    // El aviso de la nube no se consume al entregarlo (lo tienen que ver todos),
+    // así que cada móvil se apunta la marca de tiempo del último que enseñó.
+
+    suspend fun avisoNombreVisto(grupoId: String): Long =
+        (context.ajustes.data.first()[claveAvisoNombre] ?: "")
+            .split(";")
+            .firstOrNull { it.startsWith("$grupoId=") }
+            ?.substringAfter("=")
+            ?.toLongOrNull()
+            ?: 0L
+
+    suspend fun marcaAvisoNombreVisto(grupoId: String, millis: Long) {
+        context.ajustes.edit { prefs ->
+            val otros = (prefs[claveAvisoNombre] ?: "")
+                .split(";")
+                .filter { it.isNotBlank() && !it.startsWith("$grupoId=") }
+            prefs[claveAvisoNombre] = (otros + "$grupoId=$millis").joinToString(";")
+        }
     }
 
     suspend fun recuperacionDe(remotoId: String): String? =
