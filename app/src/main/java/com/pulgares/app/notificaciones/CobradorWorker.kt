@@ -47,7 +47,9 @@ class CobradorWorker(
                             Cobrador.notifica(
                                 applicationContext,
                                 Cobrador.Aviso(
-                                    titulo = "¡ZUMBIDO! 🐝",
+                                    titulo = "¡ZUMBIDO! 🐝 " +
+                                        com.pulgares.app.frases.Frases
+                                            .chapaZumbido(zumbido.veces),
                                     texto = com.pulgares.app.frases.Frases.para(
                                         com.pulgares.app.frases.Momento.ZUMBIDO,
                                         quien = quien,

@@ -244,7 +244,7 @@ object Frases {
         "Nada por aquí, nada por allá. Aún.",
         "El contador está a cero. Alguien tendrá que pagar algo, ¿no?",
         "Ni un gasto. Este grupo es de los que van a la cena y no pide nada.",
-        "Vacío total. Dale al botón gordo de abajo y empieza el circo.",
+        "Vacío total. Dale al botón gordo de arriba y empieza el circo.",
         "Cero apuntes. La cuenta más sana que verás en tu vida.",
         "Aquí no ha gastado nadie. De momento os creemos."
     )
@@ -394,6 +394,46 @@ object Frases {
         diasMasVieja <= 120 -> "Rey del «mañana te lo paso»"
         diasMasVieja <= 240 -> "Agujero negro financiero"
         else -> "Moroso Patrimonio de la Humanidad"
+    }
+
+    /**
+     * Los rangos del zumbador, de menor a mayor descaro. Se sube uno **cada
+     * tres zumbidos** (petición de los testers: llegar a "acreedor" con tres
+     * era demasiado barato), y a partir del último la cosa ya no tiene nombre
+     * conocido: se numera y punto.
+     */
+    private val rangosZumbido = listOf(
+        "Toque de cortesía",
+        "Recordatorio con sonrisa",
+        "Insistencia sana",
+        "Ya va en serio",
+        "Acreedor",
+        "Acreedor federado",
+        "Abeja obrera",
+        "Avispa con antecedentes",
+        "Enjambre",
+        "Cobrador aficionado",
+        "Cobrador del Frac",
+        "Martillo pilón",
+        "Sirena de fábrica",
+        "Terremoto grado 7",
+        "Hacienda en persona",
+        "Plaga bíblica",
+        "Despertador del apocalipsis",
+        "Deidad del zumbido"
+    )
+
+    /** El nivel de insistencia: uno nuevo cada tres zumbidos, sin techo. */
+    fun nivelZumbido(veces: Int): Int = (veces.coerceAtLeast(1) - 1) / 3 + 1
+
+    /** El nombre del rango para ese nivel; pasado el último, se repite el de arriba. */
+    fun rangoZumbido(veces: Int): String =
+        rangosZumbido[(nivelZumbido(veces) - 1).coerceAtMost(rangosZumbido.lastIndex)]
+
+    /** Lo que se lee en la chapa del cartelón: "×7 · nivel 3 — Insistencia sana". */
+    fun chapaZumbido(veces: Int): String {
+        val nivel = "nivel ${nivelZumbido(veces)} — ${rangoZumbido(veces)}"
+        return if (veces > 1) "×$veces · $nivel" else nivel
     }
 
     /** Rango del que siempre pone la tarjeta. */

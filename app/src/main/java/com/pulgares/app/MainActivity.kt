@@ -488,11 +488,14 @@ fun AppPulgares(
                                         actual.grupoId,
                                         colegaId,
                                         onHecho = { veces ->
+                                            val nivel = Frases.nivelZumbido(veces)
+                                            val rango = Frases.rangoZumbido(veces)
                                             avisa(
                                                 if (veces > 1) {
-                                                    "Zumbido nº$veces enviado. Insistencia nivel: acreedor."
+                                                    "Zumbido nº$veces enviado. " +
+                                                        "Nivel $nivel: $rango."
                                                 } else {
-                                                    "Zumbido enviado. Que tiemble."
+                                                    "Zumbido enviado. Nivel $nivel: $rango."
                                                 }
                                             )
                                         },

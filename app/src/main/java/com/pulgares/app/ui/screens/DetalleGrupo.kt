@@ -1,5 +1,6 @@
 package com.pulgares.app.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,9 +15,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +51,13 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
+ * Cabecera, mi situacion y luego el boton de apuntar: el tercer item de la
+ * lista. Si se mete algo antes, hay que subir este numero o el atajo flotante
+ * aparecera tarde.
+ */
+private const val INDICE_BOTON_APUNTAR = 2
+
+/**
  * El grupo por dentro: quien debe a quien (el plan de pagos), la lista de
  * gastos con sus pulgares, y el boton de apuntar.
  */
@@ -72,251 +82,275 @@ fun DetalleGrupoScreen(
     // el diálogo impide que dos toques rápidos registren dos bizums iguales.
     var aPagar by remember { mutableStateOf<Transferencia?>(null) }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(start = 20.dp, end = 24.dp, top = 16.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // ---- cabecera ----
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                BotonRedondo(contenido = "‹", onClick = onVolver, descripcion = "Volver a la portada")
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
+    // El boton de apuntar vive arriba, nada mas entrar (antes estaba al final de
+    // la lista y con unos cuantos gastos habia que hacer scroll para llegar).
+    // En cuanto se pasa de largo, aparece flotando abajo para no dejarte tirado
+    // en mitad de la lista.
+    val posicion = rememberLazyListState()
+    val botonFuera by remember {
+        derivedStateOf { posicion.firstVisibleItemIndex >= INDICE_BOTON_APUNTAR }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = posicion,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentPadding = PaddingValues(start = 20.dp, end = 24.dp, top = 16.dp, bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // ---- cabecera ----
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BotonRedondo(contenido = "‹", onClick = onVolver, descripcion = "Volver a la portada")
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "${grupo.emoji} ${grupo.nombre}",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Text(
+                            text = "${grupo.colegas.size} colegas · ${Dinero.formateaConPesetas(estado.totalGastado)}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    BotonRedondo(
+                        contenido = "⚙️",
+                        descripcion = "Ajustes del grupo",
+                        onClick = onAbrirAjustes
+                    )
+                }
+            }
+
+            // ---- mi situacion ----
+            item {
+                val mio = estado.miSituacion
+                val color = when {
+                    mio.enPaz -> Paleta.VerdePazSuave
+                    mio.neto < 0 -> Paleta.RojoDeudaSuave
+                    else -> Paleta.MostazaSuave
+                }
+                val frase = when {
+                    estado.enPaz -> Frases.para(Momento.EN_PAZ, semilla = grupo.id.hashCode().toLong())
+                    mio.neto < 0 -> Frases.para(
+                        Momento.CABECERA_DEBO,
+                        centimos = mio.deboCentimos,
+                        semilla = mio.deboCentimos
+                    )
+                    mio.neto > 0 -> Frases.para(
+                        Momento.TE_DEBEN,
+                        quien = yo?.nombre ?: "",
+                        centimos = mio.meDebenCentimos,
+                        semilla = mio.meDebenCentimos
+                    )
+                    else -> Frases.para(Momento.EN_PAZ, semilla = 5)
+                }
+                Pegatina(color = color, radio = 24.dp, sombra = 5.dp, modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "${grupo.emoji} ${grupo.nombre}",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onBackground
+                        text = frase,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Paleta.Tinta,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+
+            // ---- apuntar gasto: lo primero que se ve ----
+            item {
+                BotonPegatina(
+                    texto = "Apuntar gasto",
+                    emoji = "💸",
+                    onClick = onNuevoGasto,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // ---- plan de pagos ----
+            if (estado.plan.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Quién paga a quién",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(top = 6.dp)
                     )
                     Text(
-                        text = "${grupo.colegas.size} colegas · ${Dinero.formateaConPesetas(estado.totalGastado)}",
+                        text = "El mínimo de bizums para dejarlo todo a cero",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                BotonRedondo(
-                    contenido = "⚙️",
-                    descripcion = "Ajustes del grupo",
-                    onClick = onAbrirAjustes
-                )
+                items(
+                    estado.plan,
+                    key = { "${it.deQuienId}-${it.aQuienId}" }
+                ) { transferencia ->
+                    FilaTransferencia(
+                        transferencia = transferencia,
+                        estado = estado,
+                        soyElQuePaga = transferencia.deQuienId == yo?.id,
+                        onPagar = { aPagar = transferencia },
+                        // Zumbar solo tiene sentido si me deben A MÍ: sacudo a mi deudor.
+                        onZumbar = if (onZumbar != null && transferencia.aQuienId == yo?.id) {
+                            { onZumbar(transferencia.deQuienId) }
+                        } else {
+                            null
+                        }
+                    )
+                }
             }
-        }
 
-        // ---- mi situacion ----
-        item {
-            val mio = estado.miSituacion
-            val color = when {
-                mio.enPaz -> Paleta.VerdePazSuave
-                mio.neto < 0 -> Paleta.RojoDeudaSuave
-                else -> Paleta.MostazaSuave
-            }
-            val frase = when {
-                estado.enPaz -> Frases.para(Momento.EN_PAZ, semilla = grupo.id.hashCode().toLong())
-                mio.neto < 0 -> Frases.para(
-                    Momento.CABECERA_DEBO,
-                    centimos = mio.deboCentimos,
-                    semilla = mio.deboCentimos
-                )
-                mio.neto > 0 -> Frases.para(
-                    Momento.TE_DEBEN,
-                    quien = yo?.nombre ?: "",
-                    centimos = mio.meDebenCentimos,
-                    semilla = mio.meDebenCentimos
-                )
-                else -> Frases.para(Momento.EN_PAZ, semilla = 5)
-            }
-            Pegatina(color = color, radio = 24.dp, sombra = 5.dp, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = frase,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Paleta.Tinta,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-        }
+            // ---- morosos de leyenda ----
+            val morosos = estado.saldos
+                .filter { it.esDeudor && it.colegaId != yo?.id }
+                .mapNotNull { saldo ->
+                    val colega = grupo.colega(saldo.colegaId) ?: return@mapNotNull null
+                    val dias = estado.diasDeudaDe(saldo.colegaId, ahora)
+                    Triple(colega, -saldo.neto, dias)
+                }
+                .filter { it.third >= 7 }
+                .sortedByDescending { it.third }
 
-        // ---- plan de pagos ----
-        if (estado.plan.isNotEmpty()) {
-            item {
-                Text(
-                    text = "Quién paga a quién",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
-                Text(
-                    text = "El mínimo de bizums para dejarlo todo a cero",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            items(
-                estado.plan,
-                key = { "${it.deQuienId}-${it.aQuienId}" }
-            ) { transferencia ->
-                FilaTransferencia(
-                    transferencia = transferencia,
-                    estado = estado,
-                    soyElQuePaga = transferencia.deQuienId == yo?.id,
-                    onPagar = { aPagar = transferencia },
-                    // Zumbar solo tiene sentido si me deben A MÍ: sacudo a mi deudor.
-                    onZumbar = if (onZumbar != null && transferencia.aQuienId == yo?.id) {
-                        { onZumbar(transferencia.deQuienId) }
-                    } else {
-                        null
-                    }
-                )
-            }
-        }
-
-        // ---- morosos de leyenda ----
-        val morosos = estado.saldos
-            .filter { it.esDeudor && it.colegaId != yo?.id }
-            .mapNotNull { saldo ->
-                val colega = grupo.colega(saldo.colegaId) ?: return@mapNotNull null
-                val dias = estado.diasDeudaDe(saldo.colegaId, ahora)
-                Triple(colega, -saldo.neto, dias)
-            }
-            .filter { it.third >= 7 }
-            .sortedByDescending { it.third }
-
-        if (morosos.isNotEmpty()) {
-            item {
-                Text(
-                    text = "Salón de la fama",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
-            }
-            items(morosos) { (colega, deuda, dias) ->
-                Pegatina(modifier = Modifier.fillMaxWidth(), color = Paleta.MostazaSuave, sombra = 3.dp) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AvatarMonigote(
-                            monigote = avatarDe(colega),
-                            tamano = 44,
-                            descripcion = "Monigote de ${colega.nombre}"
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = Frases.rangoMoroso(deuda, dias),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = Paleta.Tinta
+            if (morosos.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Salón de la fama",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
+                items(morosos) { (colega, deuda, dias) ->
+                    Pegatina(modifier = Modifier.fillMaxWidth(), color = Paleta.MostazaSuave, sombra = 3.dp) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AvatarMonigote(
+                                monigote = avatarDe(colega),
+                                tamano = 44,
+                                descripcion = "Monigote de ${colega.nombre}"
                             )
-                            Text(
-                                text = Frases.para(
-                                    Momento.MOROSO_LEYENDA,
-                                    quien = colega.nombre,
-                                    centimos = deuda,
-                                    dias = dias,
-                                    semilla = colega.id.hashCode().toLong()
-                                ),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Paleta.TintaSuave
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = Frases.rangoMoroso(deuda, dias),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = Paleta.Tinta
+                                )
+                                Text(
+                                    text = Frases.para(
+                                        Momento.MOROSO_LEYENDA,
+                                        quien = colega.nombre,
+                                        centimos = deuda,
+                                        dias = dias,
+                                        semilla = colega.id.hashCode().toLong()
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Paleta.TintaSuave
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            BotonRedondo(
+                                contenido = "👉",
+                                onClick = { onDarToque(colega, deuda) },
+                                color = Paleta.RosaChicle
                             )
                         }
+                    }
+                }
+            }
+
+            // ---- gastos ----
+            item {
+                Text(
+                    text = "Gastos",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+
+            if (estado.gastos.isEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        MascotaPulgares(tamano = 120)
+                        Text(
+                            text = Frases.para(Momento.SIN_GASTOS, semilla = grupo.id.hashCode().toLong()),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            } else {
+                items(estado.gastos, key = { it.id }) { gasto ->
+                    FilaGasto(
+                        gasto = gasto,
+                        estado = estado,
+                        miId = yo?.id,
+                        onClick = { onEditarGasto(gasto) },
+                        onVotar = { arriba -> onVotar(gasto.id, arriba) }
+                    )
+                }
+            }
+
+            // ---- bizums ya hechos ----
+            if (estado.pagos.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Bizums registrados",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+                items(estado.pagos, key = { it.id }) { pago ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "💸 ", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = "${grupo.nombreDe(pago.deQuienId)} → ${grupo.nombreDe(pago.aQuienId)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = Dinero.formatea(pago.importeCentimos),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Spacer(Modifier.width(8.dp))
+                        // Un bizum apuntado por error deja las cuentas mal para
+                        // siempre, asi que hay que poder quitarlo.
                         BotonRedondo(
-                            contenido = "👉",
-                            onClick = { onDarToque(colega, deuda) },
-                            color = Paleta.RosaChicle
+                            contenido = "✕",
+                            descripcion = "Deshacer este bizum",
+                            color = Paleta.RojoDeudaSuave,
+                            sombra = 2.dp,
+                            onClick = { onBorrarPago(pago) }
                         )
                     }
                 }
             }
+
         }
 
-        // ---- gastos ----
-        item {
-            Text(
-                text = "Gastos",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(top = 6.dp)
-            )
-        }
-
-        if (estado.gastos.isEmpty()) {
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    MascotaPulgares(tamano = 120)
-                    Text(
-                        text = Frases.para(Momento.SIN_GASTOS, semilla = grupo.id.hashCode().toLong()),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-        } else {
-            items(estado.gastos, key = { it.id }) { gasto ->
-                FilaGasto(
-                    gasto = gasto,
-                    estado = estado,
-                    miId = yo?.id,
-                    onClick = { onEditarGasto(gasto) },
-                    onVotar = { arriba -> onVotar(gasto.id, arriba) }
-                )
-            }
-        }
-
-        // ---- bizums ya hechos ----
-        if (estado.pagos.isNotEmpty()) {
-            item {
-                Text(
-                    text = "Bizums registrados",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-            items(estado.pagos, key = { it.id }) { pago ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "💸 ", style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        text = "${grupo.nombreDe(pago.deQuienId)} → ${grupo.nombreDe(pago.aQuienId)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = Dinero.formatea(pago.importeCentimos),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    // Un bizum apuntado por error deja las cuentas mal para
-                    // siempre, asi que hay que poder quitarlo.
-                    BotonRedondo(
-                        contenido = "✕",
-                        descripcion = "Deshacer este bizum",
-                        color = Paleta.RojoDeudaSuave,
-                        sombra = 2.dp,
-                        onClick = { onBorrarPago(pago) }
-                    )
-                }
-            }
-        }
-
-        item {
-            Spacer(Modifier.height(8.dp))
+        AnimatedVisibility(
+            visible = botonFuera,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 20.dp)
+        ) {
             BotonPegatina(
-                texto = "Apuntar gasto",
+                texto = "Apuntar",
                 emoji = "💸",
-                onClick = onNuevoGasto,
-                modifier = Modifier.fillMaxWidth()
+                onClick = onNuevoGasto
             )
         }
     }

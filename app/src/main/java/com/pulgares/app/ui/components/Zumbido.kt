@@ -90,14 +90,14 @@ fun ZumbidoOverlay(
                     color = Paleta.Tinta,
                     textAlign = TextAlign.Center
                 )
-                if (zumbido.veces > 1) {
-                    Spacer(Modifier.height(8.dp))
-                    Chapa(
-                        texto = "×${zumbido.veces} — insiste el elemento",
-                        color = Paleta.RosaChicle,
-                        colorTexto = Paleta.Papel
-                    )
-                }
+                // El nivel siempre a la vista: sube uno cada tres zumbidos y
+                // la escalera es larga, asi que se ve que hay carrera por delante.
+                Spacer(Modifier.height(8.dp))
+                Chapa(
+                    texto = Frases.chapaZumbido(zumbido.veces),
+                    color = Paleta.RosaChicle,
+                    colorTexto = Paleta.Papel
+                )
             }
         }
     }
