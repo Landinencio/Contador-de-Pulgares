@@ -615,6 +615,11 @@ fun AppPulgares(
                                 // El código de recuperación se pide al entrar aquí.
                                 LaunchedEffect(estado.grupo.remotoId) {
                                     vm.codigoDeRecuperacion(actual.grupoId) { recuperacion = it }
+                                    // Y de paso se refresca la nube: sin esto, el
+                                    // botón del nombre no sabe si ya gastaste tu
+                                    // cambio gratis (ni si hay votación abierta)
+                                    // hasta el siguiente pulso, hasta 30s después.
+                                    vm.sincronizaEnSilencio(actual.grupoId) {}
                                 }
                                 val resultado = solicitudesPorGrupo[actual.grupoId]
                                 if (resultado != null && resultado.solicitudes.isNotEmpty()) {
