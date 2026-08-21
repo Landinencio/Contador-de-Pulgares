@@ -3,6 +3,8 @@ package com.pulgares.app.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.pulgares.app.frases.Frases
+import com.pulgares.app.frases.Momento
 import com.pulgares.app.avatar.Monigote
 import com.pulgares.app.data.EstadoGrupo
 import com.pulgares.app.data.Repositorio
@@ -82,6 +84,16 @@ class PulgaresViewModel(
 
     private fun apuntaResultado(grupoId: String, resultado: RepositorioNube.Resultado) {
         _solicitudes.value = _solicitudes.value + (grupoId to resultado)
+        // Un colega ha cambiado de nombre en otro móvil: se canta, que si no el
+        // cambio pasa desapercibido y parece que la app no se ha enterado.
+        resultado.renombrados.firstOrNull()?.let { (antes, ahora) ->
+            _avisoNombre.value = if (resultado.renombrados.size > 1) {
+                "Cambios de nombre: $antes ahora es «$ahora», y alguno más."
+            } else {
+                Frases.para(Momento.NOMBRE_COLEGA, quien = antes, que = ahora)
+            }
+        }
+
         // El resultado del último cambio de nombre: la nube se lo cuenta a todos y
         // cada móvil lo canta una vez (por su marca de tiempo).
         val aviso = resultado.avisoNombre

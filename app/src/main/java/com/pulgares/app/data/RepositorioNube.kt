@@ -43,7 +43,9 @@ class RepositorioNube(
         /** Cómo acabó la última votación (o el último cambio directo). */
         val avisoNombre: Sincronizador.AvisoNombre? = null,
         /** ¿Me queda el cambio de nombre gratis? */
-        val meQuedaCambioGratis: Boolean = true
+        val meQuedaCambioGratis: Boolean = true,
+        /** Colegas que han cambiado de nombre en esta bajada: (antes, ahora). */
+        val renombrados: List<Pair<String, String>> = emptyList()
     )
 
     /**
@@ -114,6 +116,16 @@ class RepositorioNube(
         )
 
         val remoto = Sincronizador.leeGrupo(respuesta.getJSONObject("grupo"), grupoId)
+
+        // El nombre y el emoji del grupo no viajan en la subida normal: tienen su
+        // propia ruta. Si esa llamada falló (sin cobertura al renombrar), el
+        // cambio se quedaba en este móvil para siempre, porque las
+        // sincronizaciones siguientes solo bajan. Aquí se reintenta: si lo de
+        // aquí es más nuevo que lo de la nube, se empuja por la ruta legítima.
+        if (estado.grupo.version > remoto.version) {
+            runCatching { editaGrupo(grupoId) }
+        }
+
         return guardaLoQueLlega(estado, remoto)
     }
 
@@ -340,6 +352,16 @@ class RepositorioNube(
         ).map { it.copy(soyYo = it.id == miColega) }
         local.guardaColegas(grupoId, colegas.ifEmpty { estado.grupo.colegas })
 
+        // Los nombres que han cambiado al bajar, para poder cantarlos: cambiar en
+        // silencio era media queja de los testers ("no da la sensacion de que se
+        // haya hecho"). Lo que cambia por MI mano no entra aqui: en local ya
+        // estaba puesto antes de sincronizar, asi que no hay diferencia.
+        val comoEstaban = estado.grupo.colegas.associate { it.id to it.nombre }
+        val renombrados = colegas.mapNotNull { colega ->
+            val antes = comoEstaban[colega.id]
+            if (antes != null && antes != colega.nombre) antes to colega.nombre else null
+        }
+
         val gastosAntes = estado.gastos.map { it.id }.toSet()
         val pagosAntes = estado.pagos.map { it.id }.toSet()
 
@@ -380,7 +402,8 @@ class RepositorioNube(
             zumbidos = remoto.zumbidos,
             votacion = remoto.votacion,
             avisoNombre = remoto.avisoNombre,
-            meQuedaCambioGratis = remoto.meQuedaCambioGratis
+            meQuedaCambioGratis = remoto.meQuedaCambioGratis,
+            renombrados = renombrados
         )
     }
 
