@@ -37,6 +37,7 @@ object Sincronizador {
                         .put("nombre", colega.nombre)
                         .put("avatar", colega.avatar ?: JSONObject.NULL)
                         .put("activo", colega.activo)
+                        .put("version", colega.version)
                 )
             }
         })
@@ -156,7 +157,8 @@ object Sincronizador {
                 nombre = item.optString("nombre"),
                 avatar = item.optString("avatar").takeIf { it.isNotBlank() && it != "null" },
                 soyYo = item.getString("id") == miColega,
-                activo = item.optBoolean("activo", true)
+                activo = item.optBoolean("activo", true),
+                version = item.optLong("version")
             )
         }
 

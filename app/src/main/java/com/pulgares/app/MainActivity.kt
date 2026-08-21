@@ -19,6 +19,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -265,6 +266,47 @@ fun AppPulgares(
         pantalla.grupoAsociado?.let { vm.abreGrupo(it) }
     }
 
+    // Al abrir la app, el recordatorio de quien pone la siguiente. Sale del
+    // grupo mas movido (el del gasto mas reciente) y una sola vez por arranque:
+    // un aviso por grupo seria una encerrona nada mas entrar.
+    var rondaCantada by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(grupos, perfil) {
+        if (rondaCantada) return@LaunchedEffect
+        val elMasMovido = grupos
+            .filter { it.siguienteRonda != null }
+            .maxByOrNull { it.ultimoGastoMillis }
+            ?: return@LaunchedEffect
+        val ronda = elMasMovido.siguienteRonda ?: return@LaunchedEffect
+        val quien = elMasMovido.grupo.colega(ronda.colegaId) ?: return@LaunchedEffect
+        rondaCantada = true
+        avisa(
+            "${elMasMovido.grupo.emoji} " + if (quien.soyYo) {
+                Frases.para(Momento.SIGUIENTE_RONDA_YO, centimos = ronda.puestoCentimos)
+            } else {
+                Frases.para(
+                    Momento.SIGUIENTE_RONDA,
+                    quien = quien.nombre,
+                    centimos = ronda.puestoCentimos
+                )
+            }
+        )
+    }
+
+    // Al volver a la app (y al arrancarla) se sincronizan todos los grupos
+    // compartidos. Con solo el LaunchedEffect de abajo, dejar la app en segundo
+    // plano y volver no traia nada hasta el siguiente pulso: parecia que la app
+    // no se enteraba de lo que hacian los demas.
+    val duenoDelCiclo = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(duenoDelCiclo) {
+        val observador = androidx.lifecycle.LifecycleEventObserver { _, evento ->
+            if (evento == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                vm.sincronizaTodosLosCompartidos()
+            }
+        }
+        duenoDelCiclo.lifecycle.addObserver(observador)
+        onDispose { duenoDelCiclo.lifecycle.removeObserver(observador) }
+    }
+
     // Al arrancar la app se sincronizan todos los grupos compartidos, para que
     // la portada (los saldos) ya refleje lo que apuntaron los demás.
     LaunchedEffect(Unit) {
@@ -294,7 +336,7 @@ fun AppPulgares(
                     avisa(resumenSync(novedades))
                 }
             }
-            kotlinx.coroutines.delay(30_000)
+            kotlinx.coroutines.delay(12_000)
         }
     }
 

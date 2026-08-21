@@ -131,7 +131,7 @@ interface PagosDao {
 
 @Database(
     entities = [GrupoEntity::class, ColegaEntity::class, GastoEntity::class, PagoEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class BaseDatos : RoomDatabase() {
@@ -190,13 +190,27 @@ abstract class BaseDatos : RoomDatabase() {
             }
         }
 
+        /**
+         * v5 -> v6: los colegas ganan `version`. Sin ella, la subida no podia
+         * decir "esto es lo mas nuevo" y el backend le ponia la hora de la
+         * subida, asi que el ultimo movil en sincronizar pisaba el nombre que
+         * otro acababa de cambiar. Los que ya existen entran con 0 (lo mas viejo
+         * posible): manda lo que haya en la nube hasta que alguien lo cambie de
+         * verdad, y ese cambio ya viaja con su version y gana.
+         */
+        private val DE_5_A_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE colegas ADD COLUMN version INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun obten(context: Context): BaseDatos = instancia ?: synchronized(this) {
             instancia ?: Room.databaseBuilder(
                 context.applicationContext,
                 BaseDatos::class.java,
                 "pulgares.db"
             )
-                .addMigrations(DE_1_A_2, DE_2_A_3, DE_3_A_4, DE_4_A_5)
+                .addMigrations(DE_1_A_2, DE_2_A_3, DE_3_A_4, DE_4_A_5, DE_5_A_6)
                 .build()
                 .also { instancia = it }
         }

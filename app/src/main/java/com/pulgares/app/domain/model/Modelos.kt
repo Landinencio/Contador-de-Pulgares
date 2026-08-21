@@ -21,7 +21,14 @@ data class Colega(
     /** Solo uno de los colegas es el dueno del movil. */
     val soyYo: Boolean = false,
     /** false = ya no esta en el grupo, pero sigue en los gastos de antes. */
-    val activo: Boolean = true
+    val activo: Boolean = true,
+    /**
+     * Millis del ultimo cambio (nombre, monigote o activo), para arbitrar al
+     * sincronizar. Sin esto, cada subida reescribia los colegas con la hora
+     * actual y el ultimo movil que sincronizaba pisaba el nombre que otro habia
+     * cambiado: el cambio se veia un rato y volvia solo al de antes.
+     */
+    val version: Long = 0L
 )
 
 /** Como se parte un gasto entre los colegas. */

@@ -440,7 +440,13 @@ class PulgaresViewModel(
         viewModelScope.launch {
             repo.guardaColegas(
                 grupoId,
-                colegas.map { if (it.id == quien.id) it.copy(activo = activo) else it }
+                colegas.map {
+                    if (it.id == quien.id) {
+                        it.copy(activo = activo, version = System.currentTimeMillis())
+                    } else {
+                        it
+                    }
+                }
             )
             sincronizaTrasCambio(grupoId)
         }
@@ -450,7 +456,15 @@ class PulgaresViewModel(
         viewModelScope.launch {
             repo.guardaColegas(
                 grupoId,
-                colegas.map { if (it.id == colega.id) it.copy(nombre = nombre) else it }
+                // La version es lo que hace que el cambio GANE en los demas
+                // moviles en vez de volver solo al nombre de antes.
+                colegas.map {
+                    if (it.id == colega.id) {
+                        it.copy(nombre = nombre, version = System.currentTimeMillis())
+                    } else {
+                        it
+                    }
+                }
             )
             sincronizaTrasCambio(grupoId)
         }

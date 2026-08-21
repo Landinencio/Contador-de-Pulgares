@@ -34,6 +34,44 @@ data class Transferencia(
  */
 object Cuentas {
 
+    /** A quien le toca poner la siguiente, y cuanto lleva puesto. */
+    data class SiguienteRonda(val colegaId: String, val puestoCentimos: Long)
+
+    /**
+     * A quien le toca pagar la siguiente: al que menos ha puesto.
+     *
+     * No mira saldos (quien adelanta mucho y luego cobra sigue habiendo puesto),
+     * sino el dinero que ha adelantado de su bolsillo. Los empates se rompen con
+     * quien lleva mas tiempo sin poner y, si todo empata, por id: tiene que
+     * salir el MISMO nombre en todos los moviles, que el mensaje es para todos.
+     *
+     * Devuelve null si no hay a quien senalar: menos de dos activos o ni un
+     * gasto todavia (ahi no hay ronda que repartir).
+     */
+    fun quienPagaLaSiguiente(
+        activos: List<Colega>,
+        gastos: List<Gasto>
+    ): SiguienteRonda? {
+        val vivos = gastos.filterNot { it.borrado }
+        if (activos.size < 2 || vivos.isEmpty()) return null
+
+        val elegido = activos
+            .map { colega ->
+                val suyos = vivos.filter { it.pagadorId == colega.id }
+                Triple(
+                    colega,
+                    suyos.sumOf { it.importeCentimos },
+                    suyos.maxOfOrNull { it.fechaMillis } ?: 0L
+                )
+            }
+            .sortedWith(
+                compareBy({ it.second }, { it.third }, { it.first.id })
+            )
+            .first()
+
+        return SiguienteRonda(elegido.first.id, elegido.second)
+    }
+
     /**
      * Saldo de cada colega. Un [Pago] cuenta como "pagado" para quien lo hace y
      * como "debido" para quien lo recibe: mover dinero salda deuda, no crea gasto.

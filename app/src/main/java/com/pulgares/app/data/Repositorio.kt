@@ -28,6 +28,10 @@ data class EstadoGrupo(
     val miSituacion: Cuentas.MiSituacion
         get() = Cuentas.loMioDelPlan(plan, grupo.yo?.id ?: "")
 
+    /** A quien le toca poner la siguiente (el que menos ha puesto). */
+    val siguienteRonda: Cuentas.SiguienteRonda?
+        get() = Cuentas.quienPagaLaSiguiente(grupo.activos, gastos)
+
     fun saldoDe(colegaId: String): Long =
         saldos.firstOrNull { it.colegaId == colegaId }?.neto ?: 0L
 
@@ -72,7 +76,10 @@ class Repositorio(private val bd: BaseDatos) {
                 cuantosGastos = susGastos.size,
                 totalGastado = Cuentas.totalGastado(susGastos),
                 miNeto = mio.neto,
-                enPaz = saldos.all { it.enPaz }
+                enPaz = saldos.all { it.enPaz },
+                siguienteRonda = Cuentas.quienPagaLaSiguiente(grupo.activos, susGastos),
+                ultimoGastoMillis = susGastos.filterNot { it.borrado }
+                    .maxOfOrNull { it.fechaMillis } ?: 0L
             )
         }
     }
@@ -144,7 +151,10 @@ class Repositorio(private val bd: BaseDatos) {
     suspend fun renombraMisYo(nombre: String) {
         val mios = bd.grupos().colegasDeUnaVez().filter { it.soyYo }
         if (mios.isNotEmpty()) {
-            bd.grupos().guardaColegas(mios.map { it.copy(nombre = nombre.trim()) })
+            val ahora = System.currentTimeMillis()
+            bd.grupos().guardaColegas(
+                mios.map { it.copy(nombre = nombre.trim(), version = ahora) }
+            )
         }
     }
 
@@ -159,7 +169,13 @@ class Repositorio(private val bd: BaseDatos) {
         bd.grupos().guardaGrupo(
             Grupo(id = grupoId, nombre = nombre, emoji = emoji, creadoMillis = ahora).aEntidad()
         )
-        val yo = Colega(id = nuevoId(), nombre = miNombre, avatar = miAvatar, soyYo = true)
+        val yo = Colega(
+            id = nuevoId(),
+            nombre = miNombre,
+            avatar = miAvatar,
+            soyYo = true,
+            version = System.currentTimeMillis()
+        )
         bd.grupos().guardaColegas(listOf(yo.aEntidad(grupoId, 0)))
         return grupoId
     }
@@ -184,7 +200,13 @@ class Repositorio(private val bd: BaseDatos) {
 
     suspend fun anadeColega(grupoId: String, nombre: String, orden: Int) {
         bd.grupos().guardaColegas(
-            listOf(Colega(id = nuevoId(), nombre = nombre.trim()).aEntidad(grupoId, orden))
+            listOf(
+                Colega(
+                    id = nuevoId(),
+                    nombre = nombre.trim(),
+                    version = System.currentTimeMillis()
+                ).aEntidad(grupoId, orden)
+            )
         )
     }
 
@@ -281,7 +303,8 @@ class Repositorio(private val bd: BaseDatos) {
     /** Cambia el avatar del colega que soy yo, en todos los grupos a la vez. */
     suspend fun guardaMiAvatar(avatar: String) {
         val mios = colegasActuales().filter { it.soyYo }
-        bd.grupos().guardaColegas(mios.map { it.copy(avatar = avatar) })
+        val ahora = System.currentTimeMillis()
+        bd.grupos().guardaColegas(mios.map { it.copy(avatar = avatar, version = ahora) })
     }
 
     /**
@@ -294,7 +317,9 @@ class Repositorio(private val bd: BaseDatos) {
         if (colega.soyYo) {
             guardaMiAvatar(avatar)
         } else {
-            bd.grupos().guardaColegas(listOf(colega.copy(avatar = avatar)))
+            bd.grupos().guardaColegas(
+                listOf(colega.copy(avatar = avatar, version = System.currentTimeMillis()))
+            )
         }
     }
 
@@ -311,5 +336,9 @@ data class ResumenGrupo(
     val cuantosGastos: Int,
     val totalGastado: Long,
     val miNeto: Long,
-    val enPaz: Boolean
+    val enPaz: Boolean,
+    /** A quien le toca poner la siguiente en este grupo. */
+    val siguienteRonda: Cuentas.SiguienteRonda? = null,
+    /** Para elegir, al abrir la app, de que grupo hablar: el mas movido. */
+    val ultimoGastoMillis: Long = 0L
 )

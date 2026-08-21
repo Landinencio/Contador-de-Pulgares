@@ -328,13 +328,17 @@ class RepositorioNube(
     ): Resultado {
         val grupoId = estado.grupo.id
 
-        // Los colegas: la nube manda, pero sin perder quién soy yo en este móvil.
+        // Los colegas se fusionan igual que los gastos: gana la version mas alta.
+        // Antes la nube machacaba lo local sin mirar, asi que un nombre recien
+        // cambiado en este movil volvia al de antes en cuanto otro sincronizaba.
         val miColega = remoto.miColegaId ?: estado.grupo.yo?.id
-        local.guardaColegas(
-            grupoId,
-            remoto.colegas.map { it.copy(soyYo = it.id == miColega) }
-                .ifEmpty { estado.grupo.colegas }
-        )
+        val colegas = Sincronizador.fusiona(
+            locales = estado.grupo.colegas,
+            remotos = remoto.colegas,
+            id = Colega::id,
+            version = Colega::version
+        ).map { it.copy(soyYo = it.id == miColega) }
+        local.guardaColegas(grupoId, colegas.ifEmpty { estado.grupo.colegas })
 
         val gastosAntes = estado.gastos.map { it.id }.toSet()
         val pagosAntes = estado.pagos.map { it.id }.toSet()

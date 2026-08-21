@@ -49,7 +49,9 @@ data class ColegaEntity(
     val soyYo: Boolean,
     val orden: Int,
     /** Anadida en la version 2: quien sale del grupo se marca, no se borra. */
-    val activo: Boolean = true
+    val activo: Boolean = true,
+    /** Anadida en la version 6: arbitro al sincronizar, igual que en gastos. */
+    val version: Long = 0L
 )
 
 @Entity(
@@ -104,7 +106,8 @@ fun ColegaEntity.aDominio() = Colega(
     nombre = nombre,
     avatar = avatar,
     soyYo = soyYo,
-    activo = activo
+    activo = activo,
+    version = version
 )
 
 fun Colega.aEntidad(grupoId: String, orden: Int) = ColegaEntity(
@@ -114,7 +117,8 @@ fun Colega.aEntidad(grupoId: String, orden: Int) = ColegaEntity(
     avatar = avatar,
     soyYo = soyYo,
     orden = orden,
-    activo = activo
+    activo = activo,
+    version = version
 )
 
 fun GrupoEntity.aDominio(colegas: List<Colega>) = Grupo(

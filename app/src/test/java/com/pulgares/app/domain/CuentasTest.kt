@@ -7,6 +7,7 @@ import com.pulgares.app.domain.model.Reparto
 import com.pulgares.app.domain.settlement.Cuentas
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -287,5 +288,61 @@ class CuentasTest {
             pulgaresAbajo = setOf("p")
         )
         assertEquals(1, votado.saldoPulgares)
+    }
+
+    // ---- a quien le toca poner la siguiente ----
+
+    private fun puesto(
+        id: String,
+        importe: Long,
+        pagador: String,
+        cuando: Long,
+        borrado: Boolean = false
+    ) = gasto(id, importe, pagador).copy(fechaMillis = cuando, borrado = borrado)
+
+    @Test
+    fun `la siguiente la paga el que menos ha puesto`() {
+        // Rubén 50, Ana 10, Luis 30 -> le toca a Ana.
+        val gastos = listOf(
+            puesto("1", 5_000, "r", cuando = 100),
+            puesto("2", 1_000, "a", cuando = 200),
+            puesto("3", 3_000, "l", cuando = 300)
+        )
+        val turno = Cuentas.quienPagaLaSiguiente(cuadrilla, gastos)!!
+        assertEquals("a", turno.colegaId)
+        assertEquals(1_000L, turno.puestoCentimos)
+
+        // Quien no ha puesto NADA va primero, aunque no salga en ningun gasto.
+        val conCuarto = cuadrilla + Colega("d", "Dani")
+        assertEquals("d", Cuentas.quienPagaLaSiguiente(conCuarto, gastos)!!.colegaId)
+
+        // Empate a dinero: paga el que lleva mas tiempo sin poner.
+        val empate = listOf(
+            puesto("1", 2_000, "r", cuando = 900),
+            puesto("2", 2_000, "a", cuando = 100),
+            puesto("3", 9_000, "l", cuando = 500)
+        )
+        assertEquals("a", Cuentas.quienPagaLaSiguiente(cuadrilla, empate)!!.colegaId)
+
+        // Un gasto borrado no cuenta: si contara, bastaria con borrar el propio
+        // gasto para librarse de la ronda... al contrario, quien lo borro pasa a
+        // ser el que menos ha puesto.
+        val conLapida = listOf(
+            puesto("1", 5_000, "r", cuando = 100),
+            puesto("2", 9_000, "a", cuando = 200, borrado = true),
+            puesto("3", 3_000, "l", cuando = 300)
+        )
+        assertEquals("a", Cuentas.quienPagaLaSiguiente(cuadrilla, conLapida)!!.colegaId)
+
+        // Sin gastos, o con menos de dos, no hay ronda que repartir.
+        assertNull(Cuentas.quienPagaLaSiguiente(cuadrilla, emptyList()))
+        assertNull(Cuentas.quienPagaLaSiguiente(listOf(ruben), gastos))
+
+        // Determinista: el aviso es para TODOS, asi que tiene que salir el mismo
+        // nombre en todos los moviles llegue la lista como llegue.
+        assertEquals(
+            "a",
+            Cuentas.quienPagaLaSiguiente(cuadrilla.reversed(), gastos.reversed())!!.colegaId
+        )
     }
 }

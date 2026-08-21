@@ -59,6 +59,12 @@ enum class Momento {
      */
     COBRADOR,
 
+    /** Al abrir la app: le toca poner la siguiente a otro. {quien} y {cuanto}. */
+    SIGUIENTE_RONDA,
+
+    /** Al abrir la app: la siguiente la pones tú. {cuanto} = lo que llevas puesto. */
+    SIGUIENTE_RONDA_YO,
+
     /** El grupo se acaba de llamar de otra manera. */
     NOMBRE_GRUPO,
 
@@ -243,6 +249,38 @@ object Frases {
         "Toque puesto en su bandeja. Ahora toca esperar y desconfiar."
     )
 
+    private val siguienteRonda = listOf(
+        "La siguiente la paga {quien}, que lleva {cuanto} puestos. Cuentas son cuentas.",
+        "Turno de {quien}: con {cuanto} adelantados es el que menos ha rascado.",
+        "{quien}, la próxima va a tu cargo. Llevas {cuanto} y no cuela.",
+        "Se busca pagador y el algoritmo dice {quien}. {cuanto} puestos, poca hazaña.",
+        "Por poderes del reparto: paga {quien}. Va con {cuanto} y con mucha cara.",
+        "La ronda que viene la pone {quien}. Sí, {quien}. Con sus {cuanto}.",
+        "Aviso oficial: {quien} lleva {cuanto} puestos y le toca aflojar.",
+        "{quien} tiene el honor de la siguiente. Un aplauso y la tarjeta.",
+        "Ranking del bolsillo: último {quien} ({cuanto}). Le toca.",
+        "Que saque la cartera {quien}, que llevamos todos más puesto que él.",
+        "{quien}: {cuanto} en toda la historia del grupo. La próxima, tú.",
+        "El dedo señala a {quien}. {cuanto} puestos es el récord por abajo.",
+        "Siguiente en la lista de la vergüenza: {quien}, con {cuanto}.",
+        "Se ruega a {quien} que invite. Sus {cuanto} claman al cielo."
+    )
+
+    private val siguienteRondaYo = listOf(
+        "La siguiente la pones tú: llevas {cuanto} y eres el que menos ha puesto. Asúmelo.",
+        "Malas noticias: te toca. {cuanto} puestos, el farolillo rojo eres tú.",
+        "Te ha tocado la china: la próxima la pagas tú, campeón de los {cuanto}.",
+        "Con {cuanto} adelantados vas último. La siguiente ronda lleva tu nombre.",
+        "Saca la tarjeta: eres el que menos ha puesto ({cuanto}).",
+        "Hoy invitas tú. Llevas {cuanto} y el grupo tiene memoria.",
+        "El algoritmo te ha mirado y ha dicho: paga. Van {cuanto} tuyos.",
+        "Te toca. Sí, a ti. {cuanto} puestos no dan para más excusas.",
+        "Tu turno de aflojar: {cuanto} es lo menos de todo el grupo.",
+        "Enhorabuena: eres el elegido. Llevas {cuanto} y la próxima es tuya.",
+        "Con {cuanto} puestos estás en el podio... por abajo. Invita.",
+        "Ha salido tu número. {cuanto} puestos y toca poner la siguiente."
+    )
+
     private val nombreGrupo = listOf(
         "Hecho: el grupo ahora se llama «{que}». Que conste en acta.",
         "Rebautizado. Ahora esto es «{que}» y no se hable más.",
@@ -372,6 +410,8 @@ object Frases {
         Momento.CABECERA_ME_DEBEN -> cabeceraMeDeben
         Momento.COBRADOR -> cobrador
         Momento.ZUMBIDO -> zumbido
+        Momento.SIGUIENTE_RONDA -> siguienteRonda
+        Momento.SIGUIENTE_RONDA_YO -> siguienteRondaYo
         Momento.NOMBRE_GRUPO -> nombreGrupo
         Momento.NOMBRE_COLEGA -> nombreColega
         Momento.NOMBRE_A_VOTACION -> nombreAVotacion

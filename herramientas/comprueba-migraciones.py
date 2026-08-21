@@ -40,6 +40,9 @@ MIGRACIONES: dict[tuple[int, int], list[str]] = {
         "ALTER TABLE gastos ADD COLUMN borrado INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE pagos ADD COLUMN borrado INTEGER NOT NULL DEFAULT 0",
     ],
+    (5, 6): [
+        "ALTER TABLE colegas ADD COLUMN version INTEGER NOT NULL DEFAULT 0",
+    ],
 }
 
 # Filas de ejemplo por versión de partida, para comprobar que los datos que ya

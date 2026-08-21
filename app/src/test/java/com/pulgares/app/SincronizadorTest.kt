@@ -243,6 +243,74 @@ class SincronizadorTest {
     }
 
     @Test
+    fun `un nombre recien cambiado no lo pisa una copia vieja de otro movil`() {
+        // El bicho real: yo renombro a Berto, el otro movil aun tiene "Berto"
+        // con su version de antes y sincroniza. Su copia NO debe ganar.
+        val miCambio = Colega(id = "b", nombre = "El Moroso", version = 2_000)
+        val suCopiaVieja = Colega(id = "b", nombre = "Berto", version = 1_000)
+
+        val fusionado = Sincronizador.fusiona(
+            locales = listOf(miCambio),
+            remotos = listOf(suCopiaVieja),
+            id = Colega::id,
+            version = Colega::version
+        )
+        assertEquals("El Moroso", fusionado.single().nombre)
+
+        // Y al contrario: si el cambio es del otro y es mas nuevo, gana el suyo.
+        val alRevés = Sincronizador.fusiona(
+            locales = listOf(suCopiaVieja),
+            remotos = listOf(miCambio),
+            id = Colega::id,
+            version = Colega::version
+        )
+        assertEquals("El Moroso", alRevés.single().nombre)
+
+        // Un colega que solo existe aqui (creado a mano y sin subir todavia) no
+        // se pierde al bajar: antes la nube machacaba la lista entera.
+        val soloMio = Colega(id = "z", nombre = "Zoe", version = 5)
+        val conElNuevo = Sincronizador.fusiona(
+            locales = listOf(miCambio, soloMio),
+            remotos = listOf(suCopiaVieja),
+            id = Colega::id,
+            version = Colega::version
+        )
+        assertEquals(listOf("El Moroso", "Zoe"), conElNuevo.map { it.nombre })
+    }
+
+    @Test
+    fun `la version de los colegas viaja en la subida y vuelve en la bajada`() {
+        val paquete = Sincronizador.paqueteDeSubida(
+            grupoId = "local",
+            remotoId = "remoto",
+            colegas = listOf(Colega(id = "a", nombre = "Ana", version = 7_777)),
+            gastos = emptyList(),
+            pagos = emptyList()
+        )
+        val subido = paquete.getJSONArray("colegas").getJSONObject(0)
+        assertEquals(7_777L, subido.getLong("version"))
+
+        // Y de vuelta: sin esto el arbitraje no tiene con que decidir.
+        val leido = Sincronizador.leeGrupo(
+            JSONObject(
+                """
+                {"grupoId":"remoto","nombre":"Cañas","codigo":"AAAAAA",
+                 "colegas":[{"id":"a","nombre":"Ana","activo":true,"version":7777}]}
+                """.trimIndent()
+            ),
+            "local"
+        )
+        assertEquals(7_777L, leido.colegas.single().version)
+
+        // Un backend viejo que no la manda: 0, o sea "esto no lo he tocado".
+        val sinVersion = Sincronizador.leeGrupo(
+            JSONObject("""{"grupoId":"r","codigo":"A","colegas":[{"id":"a","nombre":"Ana"}]}"""),
+            "local"
+        )
+        assertEquals(0L, sinVersion.colegas.single().version)
+    }
+
+    @Test
     fun `la votacion del nombre y su resultado llegan enteros`() {
         val json = JSONObject(
             """

@@ -52,13 +52,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * Cabecera, mi situacion y luego el boton de apuntar: el tercer item de la
- * lista. Si se mete algo antes, hay que subir este numero o el atajo flotante
- * aparecera tarde.
- */
-private const val INDICE_BOTON_APUNTAR = 2
-
-/**
  * El grupo por dentro: quien debe a quien (el plan de pagos), la lista de
  * gastos con sus pulgares, y el boton de apuntar.
  */
@@ -88,8 +81,15 @@ fun DetalleGrupoScreen(
     // En cuanto se pasa de largo, aparece flotando abajo para no dejarte tirado
     // en mitad de la lista.
     val posicion = rememberLazyListState()
-    val botonFuera by remember {
-        derivedStateOf { posicion.firstVisibleItemIndex >= INDICE_BOTON_APUNTAR }
+    // Cabecera (0), mi situacion (1), la tarjeta de la ronda si la hay, y luego
+    // el boton. Se calcula en vez de ir fijo porque la tarjeta es condicional: con
+    // un numero a mano, el atajo flotante aparecia a destiempo en la mitad de los
+    // grupos.
+    val ronda = estado.siguienteRonda
+    val leTocaLaRonda = ronda?.let { grupo.colega(it.colegaId) }
+    val indiceBotonApuntar = if (leTocaLaRonda != null) 3 else 2
+    val botonFuera by remember(indiceBotonApuntar) {
+        derivedStateOf { posicion.firstVisibleItemIndex >= indiceBotonApuntar }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -159,7 +159,54 @@ fun DetalleGrupoScreen(
                 }
             }
 
-            // ---- apuntar gasto: lo primero que se ve ----
+            // ---- a quien le toca la siguiente ----
+        val leToca = leTocaLaRonda
+        if (ronda != null && leToca != null) {
+            item {
+                Pegatina(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Paleta.RosaMonigote,
+                    sombra = 4.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AvatarMonigote(
+                            monigote = avatarDe(leToca),
+                            tamano = 46,
+                            conFondo = false,
+                            descripcion = "Monigote de ${leToca.nombre}"
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Chapa(texto = "🍻 La siguiente la paga", color = Paleta.MostazaPulgar)
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = if (leToca.soyYo) {
+                                    Frases.para(
+                                        Momento.SIGUIENTE_RONDA_YO,
+                                        centimos = ronda.puestoCentimos,
+                                        semilla = ronda.puestoCentimos
+                                    )
+                                } else {
+                                    Frases.para(
+                                        Momento.SIGUIENTE_RONDA,
+                                        quien = leToca.nombre,
+                                        centimos = ronda.puestoCentimos,
+                                        semilla = ronda.puestoCentimos
+                                    )
+                                },
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Paleta.Tinta
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---- apuntar gasto: lo primero que se ve ----
             item {
                 BotonPegatina(
                     texto = "Apuntar gasto",
